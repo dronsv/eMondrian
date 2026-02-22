@@ -37,6 +37,9 @@
   <listener>
     <listener-class>mondrian.metrics.MetricsInitializer</listener-class>
   </listener>
+  <listener>
+    <listener-class>emondrian.SchemaValidationStartupListener</listener-class>
+  </listener>
 
   <servlet>
     <servlet-name>metrics</servlet-name>
@@ -115,6 +118,10 @@
     <servlet-name>LogResurce</servlet-name>
     <servlet-class>mondrian.util.LogResource</servlet-class>
   </servlet>
+  <servlet>
+    <servlet-name>SchemaValidationServlet</servlet-name>
+    <servlet-class>emondrian.SchemaValidationServlet</servlet-class>
+  </servlet>
 
   <servlet-mapping>
     <servlet-name>MondrianXmlaServlet</servlet-name>
@@ -123,6 +130,14 @@
   <servlet-mapping>
     <servlet-name>LogResurce</servlet-name>
     <url-pattern>/logs/*</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>SchemaValidationServlet</servlet-name>
+    <url-pattern>/schema/validate</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>SchemaValidationServlet</servlet-name>
+    <url-pattern>/schema/validate/current</url-pattern>
   </servlet-mapping>
 
   <servlet>
