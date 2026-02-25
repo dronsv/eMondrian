@@ -1,5 +1,7 @@
 package emondrian;
 
+import mondrian.rolap.sql.dependency.SchemaDependencyValidationReport;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -14,6 +16,7 @@ public class SchemaValidationServlet extends HttpServlet {
         "/usr/local/tomcat/webapps/emondrian/WEB-INF/schema";
     private static final int MAX_REQUEST_BODY_CHARS = 8 * 1024 * 1024;
     private static final int MAX_JSON_DEPTH = 32;
+    private static final int MAX_DEPENDENCY_ISSUES_IN_RESPONSE = 200;
 
     private final SchemaValidationService validationService = new SchemaValidationService();
 
@@ -471,7 +474,9 @@ public class SchemaValidationServlet extends HttpServlet {
         SchemaValidationService.ValidationResult result) throws IOException
     {
         int status = result.isOk() ? HttpServletResponse.SC_OK : 422;
-        String payload = toJson(result);
+        SchemaDependencyValidationReport dependencyReport =
+            MondrianSchemaDependencyValidationAdapter.toReport(result);
+        String payload = toJson(result, dependencyReport);
         byte[] body = payload.getBytes(StandardCharsets.UTF_8);
 
         resp.setStatus(status);
@@ -498,7 +503,10 @@ public class SchemaValidationServlet extends HttpServlet {
         resp.getOutputStream().write(body);
     }
 
-    private static String toJson(SchemaValidationService.ValidationResult result) {
+    private static String toJson(
+        SchemaValidationService.ValidationResult result,
+        SchemaDependencyValidationReport dependencyReport)
+    {
         StringBuilder out = new StringBuilder(256 + (result.getMessages().size() * 256));
         out.append('{');
         out.append("\"ok\":").append(result.isOk());
@@ -508,6 +516,54 @@ public class SchemaValidationServlet extends HttpServlet {
         out.append(",\"warn\":").append(result.getWarnCount());
         out.append(",\"info\":").append(result.getInfoCount());
         out.append('}');
+        if (dependencyReport != null) {
+            out.append(",\"dependency_report\":{");
+            out.append("\"ok\":").append(dependencyReport.isOk());
+            out.append(",\"counts\":{");
+            out.append("\"fatal\":").append(dependencyReport.getFatalCount());
+            out.append(",\"warn\":").append(dependencyReport.getWarnCount());
+            out.append(",\"info\":").append(dependencyReport.getInfoCount());
+            out.append('}');
+            out.append(",\"issues_truncated\":")
+                .append(dependencyReport.getIssues().size() > MAX_DEPENDENCY_ISSUES_IN_RESPONSE);
+            out.append(",\"issues\":[");
+            boolean firstDependencyIssue = true;
+            int emitted = 0;
+            for (mondrian.rolap.sql.dependency.DependencyRegistry.DependencyValidationIssue issue
+                : dependencyReport.getIssues())
+            {
+                if (issue == null) {
+                    continue;
+                }
+                if (emitted >= MAX_DEPENDENCY_ISSUES_IN_RESPONSE) {
+                    break;
+                }
+                if (!firstDependencyIssue) {
+                    out.append(',');
+                }
+                firstDependencyIssue = false;
+                emitted++;
+                out.append('{');
+                out.append("\"severity\":\"")
+                    .append(escapeJson(String.valueOf(issue.getSeverity()).toLowerCase()))
+                    .append('"');
+                out.append(",\"code\":\"").append(escapeJson(issue.getCode())).append('"');
+                out.append(",\"message\":\"").append(escapeJson(issue.getMessage())).append('"');
+                if (issue.getCube() != null) {
+                    out.append(",\"cube\":\"").append(escapeJson(issue.getCube())).append('"');
+                }
+                if (issue.getLevel() != null) {
+                    out.append(",\"level\":\"").append(escapeJson(issue.getLevel())).append('"');
+                }
+                if (issue.getRecommendation() != null) {
+                    out.append(",\"recommendation\":\"")
+                        .append(escapeJson(issue.getRecommendation())).append('"');
+                }
+                out.append('}');
+            }
+            out.append(']');
+            out.append('}');
+        }
         out.append(",\"messages\":[");
 
         boolean first = true;
