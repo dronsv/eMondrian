@@ -153,6 +153,8 @@ public class SchemaValidationService {
         final boolean hasTimeDimension = hasTimeDimension(document);
 
         NodeList levelNodes = document.getElementsByTagName("Level");
+        final Map<String, Integer> schemaLevelNameCounts =
+            collectSchemaLevelNameCounts(levelNodes);
         Map<String, Integer> levelColumnCounts = new LinkedHashMap<String, Integer>();
         boolean hasAnyNameExpression = false;
 
@@ -257,6 +259,7 @@ public class SchemaValidationService {
                 validateDependsOnRuleSyntaxAndSafety(
                     parsedRules,
                     hasTimeDimension,
+                    schemaLevelNameCounts,
                     result,
                     schemaName,
                     levelName);
@@ -458,6 +461,7 @@ public class SchemaValidationService {
     private static void validateDependsOnRuleSyntaxAndSafety(
         List<ParsedDependsOnRule> rules,
         boolean hasTimeDimension,
+        Map<String, Integer> schemaLevelNameCounts,
         ValidationResult result,
         String schemaName,
         String levelName)
@@ -481,6 +485,12 @@ public class SchemaValidationService {
                 );
                 continue;
             }
+            validateDeterminantRef(
+                rule,
+                schemaLevelNameCounts,
+                result,
+                schemaName,
+                levelName);
             if (rule.requiresTimeFilter && !hasTimeDimension) {
                 result.addWarn(
                     "REQUIRES_TIME_FILTER_WITHOUT_TIME_DIMENSION",
@@ -511,6 +521,73 @@ public class SchemaValidationService {
                     : "Keep a single explicit rule per determinant level."
             );
         }
+    }
+
+    private static void validateDeterminantRef(
+        ParsedDependsOnRule rule,
+        Map<String, Integer> schemaLevelNameCounts,
+        ValidationResult result,
+        String schemaName,
+        String levelName)
+    {
+        if (rule == null || isBlank(rule.determinantRef)) {
+            return;
+        }
+        if (looksBracketedUniqueName(rule.determinantRef)) {
+            return;
+        }
+        int count = 0;
+        if (schemaLevelNameCounts != null) {
+            Integer value = schemaLevelNameCounts.get(rule.determinantRef);
+            count = value == null ? 0 : value.intValue();
+        }
+        if (count == 0) {
+            result.addWarn(
+                "UNKNOWN_DEPENDENCY_LEVEL_REF",
+                "Dependency rule references unknown level '" + rule.determinantRef + "'.",
+                schemaName,
+                levelName,
+                "Use an existing level name or full level unique name."
+            );
+        } else if (count > 1) {
+            result.addWarn(
+                "AMBIGUOUS_DEPENDENCY_LEVEL_REF",
+                "Dependency rule references level name '" + rule.determinantRef
+                    + "' that matches multiple levels.",
+                schemaName,
+                levelName,
+                "Use determinant level unique name in drilldown.dependsOn."
+            );
+        }
+    }
+
+    private static boolean looksBracketedUniqueName(String text) {
+        if (isBlank(text)) {
+            return false;
+        }
+        String trimmed = text.trim();
+        return trimmed.startsWith("[") && trimmed.indexOf("].[") >= 0;
+    }
+
+    private static Map<String, Integer> collectSchemaLevelNameCounts(NodeList levelNodes) {
+        Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
+        if (levelNodes == null) {
+            return counts;
+        }
+        for (int i = 0; i < levelNodes.getLength(); i++) {
+            Node node = levelNodes.item(i);
+            if (!(node instanceof Element)) {
+                continue;
+            }
+            Element level = (Element) node;
+            String name = trimToNull(level.getAttribute("name"));
+            if (name == null) {
+                continue;
+            }
+            Integer prev = counts.get(name);
+            counts.put(name, prev == null ? 1 : prev + 1);
+        }
+        return counts;
     }
 
     private static boolean hasTimeDimension(Document document) {
