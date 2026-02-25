@@ -1,5 +1,7 @@
 package emondrian;
 
+import mondrian.rolap.sql.dependency.SchemaDependencyValidationReport;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -471,7 +473,9 @@ public class SchemaValidationServlet extends HttpServlet {
         SchemaValidationService.ValidationResult result) throws IOException
     {
         int status = result.isOk() ? HttpServletResponse.SC_OK : 422;
-        String payload = toJson(result);
+        SchemaDependencyValidationReport dependencyReport =
+            MondrianSchemaDependencyValidationAdapter.toReport(result);
+        String payload = toJson(result, dependencyReport);
         byte[] body = payload.getBytes(StandardCharsets.UTF_8);
 
         resp.setStatus(status);
@@ -498,7 +502,10 @@ public class SchemaValidationServlet extends HttpServlet {
         resp.getOutputStream().write(body);
     }
 
-    private static String toJson(SchemaValidationService.ValidationResult result) {
+    private static String toJson(
+        SchemaValidationService.ValidationResult result,
+        SchemaDependencyValidationReport dependencyReport)
+    {
         StringBuilder out = new StringBuilder(256 + (result.getMessages().size() * 256));
         out.append('{');
         out.append("\"ok\":").append(result.isOk());
@@ -508,6 +515,16 @@ public class SchemaValidationServlet extends HttpServlet {
         out.append(",\"warn\":").append(result.getWarnCount());
         out.append(",\"info\":").append(result.getInfoCount());
         out.append('}');
+        if (dependencyReport != null) {
+            out.append(",\"dependency_report\":{");
+            out.append("\"ok\":").append(dependencyReport.isOk());
+            out.append(",\"counts\":{");
+            out.append("\"fatal\":").append(dependencyReport.getFatalCount());
+            out.append(",\"warn\":").append(dependencyReport.getWarnCount());
+            out.append(",\"info\":").append(dependencyReport.getInfoCount());
+            out.append('}');
+            out.append('}');
+        }
         out.append(",\"messages\":[");
 
         boolean first = true;

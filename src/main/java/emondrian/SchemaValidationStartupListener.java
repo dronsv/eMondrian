@@ -1,5 +1,7 @@
 package emondrian;
 
+import mondrian.rolap.sql.dependency.SchemaDependencyValidationReport;
+
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
@@ -27,6 +29,8 @@ public class SchemaValidationStartupListener implements ServletContextListener {
 
         SchemaValidationService.ValidationResult result =
             validationService.validateDirectory(schemaDir, failOnWarn);
+        SchemaDependencyValidationReport dependencyReport =
+            MondrianSchemaDependencyValidationAdapter.toReport(result);
 
         for (SchemaValidationService.ValidationMessage message : result.getMessages()) {
             context.log("[schema-validator][" + message.severity.toUpperCase() + "][" + message.code + "] "
@@ -45,7 +49,9 @@ public class SchemaValidationStartupListener implements ServletContextListener {
 
         context.log("[schema-validator] Schema validation completed successfully. "
             + "fatal=" + result.getFatalCount()
-            + ", warn=" + result.getWarnCount());
+            + ", warn=" + result.getWarnCount()
+            + ", dependencyFatal=" + dependencyReport.getFatalCount()
+            + ", dependencyWarn=" + dependencyReport.getWarnCount());
     }
 
     @Override
