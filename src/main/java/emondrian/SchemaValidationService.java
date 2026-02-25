@@ -28,6 +28,7 @@ public class SchemaValidationService {
         Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
     private static final Pattern DEPENDS_ON_REF_PATTERN =
         Pattern.compile("property:([A-Za-z_][A-Za-z0-9_]*)");
+    private static final String DEPENDS_ON_ANNOTATION_NAME = "drilldown.dependsOn";
     private final MondrianSchemaDependencyValidationAdapter dependencyValidationAdapter =
         new MondrianSchemaDependencyValidationAdapter(this);
 
@@ -149,6 +150,7 @@ public class SchemaValidationService {
 
     private ValidationResult validateDocument(Document document, String schemaName, boolean failOnWarn) {
         ValidationResult result = new ValidationResult(failOnWarn);
+        final boolean hasTimeDimension = hasTimeDimension(document);
 
         NodeList levelNodes = document.getElementsByTagName("Level");
         Map<String, Integer> levelColumnCounts = new LinkedHashMap<String, Integer>();
@@ -251,6 +253,13 @@ public class SchemaValidationService {
             String dependsOnText = collectDependsOnText(level);
             boolean hasDependsOn = dependsOnText != null;
             if (hasDependsOn) {
+                List<ParsedDependsOnRule> parsedRules = parseDependsOnRules(dependsOnText);
+                validateDependsOnRuleSyntaxAndSafety(
+                    parsedRules,
+                    hasTimeDimension,
+                    result,
+                    schemaName,
+                    levelName);
                 LinkedHashSet<String> referencedProperties = extractDependsOnReferences(dependsOnText);
                 if (referencedProperties.isEmpty()) {
                     result.addWarn(
@@ -338,7 +347,7 @@ public class SchemaValidationService {
             }
             Element annotation = (Element) annotationNode;
             String annotationName = trimToNull(annotation.getAttribute("name"));
-            if (!"drilldown.dependsOn".equals(annotationName)) {
+            if (!DEPENDS_ON_ANNOTATION_NAME.equals(annotationName)) {
                 continue;
             }
             found = true;
@@ -354,6 +363,173 @@ public class SchemaValidationService {
             refs.add(matcher.group(1));
         }
         return refs;
+    }
+
+    private static List<ParsedDependsOnRule> parseDependsOnRules(String text) {
+        if (isBlank(text)) {
+            return Collections.emptyList();
+        }
+        String[] rawTokens = text.split("[;,]");
+        List<ParsedDependsOnRule> result = new ArrayList<ParsedDependsOnRule>(rawTokens.length);
+        for (String rawToken : rawTokens) {
+            ParsedDependsOnRule rule = parseDependsOnRule(rawToken);
+            if (rule != null) {
+                result.add(rule);
+            }
+        }
+        return result;
+    }
+
+    private static ParsedDependsOnRule parseDependsOnRule(String rawToken) {
+        if (rawToken == null) {
+            return null;
+        }
+        String trimmedToken = rawToken.trim();
+        if (trimmedToken.isEmpty()) {
+            return null;
+        }
+
+        String[] segments = trimmedToken.split("\\|");
+        if (segments.length == 0) {
+            return null;
+        }
+        String determinantRef = segments[0].trim();
+        if (determinantRef.isEmpty()) {
+            return ParsedDependsOnRule.error(
+                "Dependency rule is missing determinant level reference: " + trimmedToken);
+        }
+
+        String mappingType = "ancestor";
+        String mappingProperty = null;
+        boolean mappingSpecified = false;
+        boolean requiresTimeFilter = false;
+
+        for (int i = 1; i < segments.length; i++) {
+            String segment = segments[i] == null ? "" : segments[i].trim();
+            if (segment.isEmpty()) {
+                continue;
+            }
+            String lower = segment.toLowerCase();
+
+            if (!mappingSpecified
+                && ("ancestor".equals(lower)
+                    || lower.startsWith("property:")
+                    || lower.startsWith("property=")))
+            {
+                mappingSpecified = true;
+                if ("ancestor".equals(lower)) {
+                    mappingType = "ancestor";
+                    mappingProperty = null;
+                    continue;
+                }
+                String propertyName = segment.substring(9).trim();
+                if (propertyName.isEmpty()) {
+                    return ParsedDependsOnRule.error(
+                        "Property dependency rule is missing property name: " + trimmedToken);
+                }
+                mappingType = "property";
+                mappingProperty = propertyName;
+                continue;
+            }
+
+            if ("requirestimefilter".equals(lower)
+                || "requirestimefilter=true".equals(lower)
+                || "requirestimefilter=false".equals(lower))
+            {
+                requiresTimeFilter = !"requirestimefilter=false".equals(lower);
+                continue;
+            }
+
+            if (!mappingSpecified) {
+                return ParsedDependsOnRule.error(
+                    "Unsupported dependency mapping '" + segment + "' in rule: " + trimmedToken);
+            }
+            return ParsedDependsOnRule.error(
+                "Unsupported dependency option '" + segment + "' in rule: " + trimmedToken);
+        }
+
+        return ParsedDependsOnRule.ok(
+            determinantRef,
+            mappingType,
+            mappingProperty,
+            requiresTimeFilter);
+    }
+
+    private static void validateDependsOnRuleSyntaxAndSafety(
+        List<ParsedDependsOnRule> rules,
+        boolean hasTimeDimension,
+        ValidationResult result,
+        String schemaName,
+        String levelName)
+    {
+        if (rules == null || rules.isEmpty()) {
+            return;
+        }
+        Map<String, ParsedDependsOnRule> seenValidatedByDeterminant =
+            new LinkedHashMap<String, ParsedDependsOnRule>();
+        for (ParsedDependsOnRule rule : rules) {
+            if (rule == null) {
+                continue;
+            }
+            if (rule.parseError != null) {
+                result.addWarn(
+                    "INVALID_DEPENDENCY_RULE_SYNTAX",
+                    rule.parseError,
+                    schemaName,
+                    levelName,
+                    "Use [Level Unique Name]|ancestor or |property:PropertyName|requiresTimeFilter."
+                );
+                continue;
+            }
+            if (rule.requiresTimeFilter && !hasTimeDimension) {
+                result.addWarn(
+                    "REQUIRES_TIME_FILTER_WITHOUT_TIME_DIMENSION",
+                    "Dependency rule requires time filter but schema has no Time dimension.",
+                    schemaName,
+                    levelName,
+                    "Remove requiresTimeFilter or define a Time dimension in this schema."
+                );
+            }
+            ParsedDependsOnRule previous = seenValidatedByDeterminant.get(rule.determinantRef);
+            if (previous == null) {
+                seenValidatedByDeterminant.put(rule.determinantRef, rule);
+                continue;
+            }
+            boolean duplicate = previous.sameSemantics(rule);
+            result.addWarn(
+                duplicate
+                    ? "DUPLICATE_VALIDATED_DEPENDENCY_RULE"
+                    : "CONFLICTING_VALIDATED_DEPENDENCY_RULE",
+                duplicate
+                    ? "Duplicate dependency rule for determinant level '" + rule.determinantRef + "'."
+                    : "Conflicting dependency rules for determinant level '" + rule.determinantRef
+                        + "'. First rule should win.",
+                schemaName,
+                levelName,
+                duplicate
+                    ? "Remove duplicate rule."
+                    : "Keep a single explicit rule per determinant level."
+            );
+        }
+    }
+
+    private static boolean hasTimeDimension(Document document) {
+        if (document == null) {
+            return false;
+        }
+        NodeList dimensionNodes = document.getElementsByTagName("Dimension");
+        for (int i = 0; i < dimensionNodes.getLength(); i++) {
+            Node node = dimensionNodes.item(i);
+            if (!(node instanceof Element)) {
+                continue;
+            }
+            Element element = (Element) node;
+            String type = trimToNull(element.getAttribute("type"));
+            if (type != null && "timedimension".equals(type.toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isTrue(String value) {
@@ -513,6 +689,66 @@ public class SchemaValidationService {
                 schema,
                 level,
                 recommendation));
+        }
+    }
+
+    private static final class ParsedDependsOnRule {
+        final String determinantRef;
+        final String mappingType;
+        final String mappingProperty;
+        final boolean requiresTimeFilter;
+        final String parseError;
+
+        private ParsedDependsOnRule(
+            String determinantRef,
+            String mappingType,
+            String mappingProperty,
+            boolean requiresTimeFilter,
+            String parseError)
+        {
+            this.determinantRef = determinantRef;
+            this.mappingType = mappingType;
+            this.mappingProperty = mappingProperty;
+            this.requiresTimeFilter = requiresTimeFilter;
+            this.parseError = parseError;
+        }
+
+        static ParsedDependsOnRule ok(
+            String determinantRef,
+            String mappingType,
+            String mappingProperty,
+            boolean requiresTimeFilter)
+        {
+            return new ParsedDependsOnRule(
+                determinantRef,
+                mappingType,
+                mappingProperty,
+                requiresTimeFilter,
+                null);
+        }
+
+        static ParsedDependsOnRule error(String parseError) {
+            return new ParsedDependsOnRule(null, null, null, false, parseError);
+        }
+
+        boolean sameSemantics(ParsedDependsOnRule other) {
+            if (other == null) {
+                return false;
+            }
+            if (!safeEquals(determinantRef, other.determinantRef)) {
+                return false;
+            }
+            if (!safeEquals(mappingType, other.mappingType)) {
+                return false;
+            }
+            if (!safeEquals(mappingProperty, other.mappingProperty)) {
+                return false;
+            }
+            return requiresTimeFilter == other.requiresTimeFilter;
+        }
+
+        private static boolean safeEquals(Object left, Object right) {
+            return left == null ? right == null : left.equals(right);
         }
     }
 }
