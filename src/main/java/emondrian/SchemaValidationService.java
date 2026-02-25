@@ -1,5 +1,7 @@
 package emondrian;
 
+import mondrian.rolap.sql.dependency.SchemaDependencyValidationReport;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -26,6 +28,8 @@ public class SchemaValidationService {
         Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
     private static final Pattern DEPENDS_ON_REF_PATTERN =
         Pattern.compile("property:([A-Za-z_][A-Za-z0-9_]*)");
+    private final MondrianSchemaDependencyValidationAdapter dependencyValidationAdapter =
+        new MondrianSchemaDependencyValidationAdapter(this);
 
     public ValidationResult validateDirectory(File schemaDir, boolean failOnWarn) {
         ValidationResult result = new ValidationResult(failOnWarn);
@@ -112,6 +116,22 @@ public class SchemaValidationService {
             );
             return result;
         }
+    }
+
+    public SchemaDependencyValidationReport validateDirectoryAsDependencyReport(
+        File schemaDir,
+        boolean failOnWarn)
+    {
+        return dependencyValidationAdapter.validateDirectory(schemaDir, failOnWarn);
+    }
+
+    public SchemaDependencyValidationReport validateSchemaXmlAsDependencyReport(
+        String schemaXml,
+        String schemaName,
+        boolean failOnWarn)
+    {
+        return dependencyValidationAdapter.validateSchemaXml(
+            schemaXml, schemaName, failOnWarn);
     }
 
     private ValidationResult validateSchemaFile(File schemaFile, boolean failOnWarn) throws Exception {
