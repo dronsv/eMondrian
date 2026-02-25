@@ -1,5 +1,6 @@
 package emondrian;
 
+import mondrian.rolap.sql.dependency.DependencyRegistry;
 import mondrian.rolap.sql.dependency.SchemaDependencyValidationReport;
 
 import org.w3c.dom.Document;
@@ -477,7 +478,7 @@ public class SchemaValidationService {
             }
             if (rule.parseError != null) {
                 result.addWarn(
-                    "INVALID_DEPENDENCY_RULE_SYNTAX",
+                    DependencyRegistry.DependencyIssueCodes.INVALID_DEPENDENCY_RULE_SYNTAX,
                     rule.parseError,
                     schemaName,
                     levelName,
@@ -493,7 +494,8 @@ public class SchemaValidationService {
                 levelName);
             if (rule.requiresTimeFilter && !hasTimeDimension) {
                 result.addWarn(
-                    "REQUIRES_TIME_FILTER_WITHOUT_TIME_DIMENSION",
+                    DependencyRegistry.DependencyIssueCodes
+                        .REQUIRES_TIME_FILTER_WITHOUT_TIME_DIMENSION,
                     "Dependency rule requires time filter but schema has no Time dimension.",
                     schemaName,
                     levelName,
@@ -508,8 +510,10 @@ public class SchemaValidationService {
             boolean duplicate = previous.sameSemantics(rule);
             result.addWarn(
                 duplicate
-                    ? "DUPLICATE_VALIDATED_DEPENDENCY_RULE"
-                    : "CONFLICTING_VALIDATED_DEPENDENCY_RULE",
+                    ? DependencyRegistry.DependencyIssueCodes
+                        .DUPLICATE_VALIDATED_DEPENDENCY_RULE
+                    : DependencyRegistry.DependencyIssueCodes
+                        .CONFLICTING_VALIDATED_DEPENDENCY_RULE,
                 duplicate
                     ? "Duplicate dependency rule for determinant level '" + rule.determinantRef + "'."
                     : "Conflicting dependency rules for determinant level '" + rule.determinantRef
@@ -543,7 +547,7 @@ public class SchemaValidationService {
         }
         if (count == 0) {
             result.addWarn(
-                "UNKNOWN_DEPENDENCY_LEVEL_REF",
+                DependencyRegistry.DependencyIssueCodes.UNKNOWN_DEPENDENCY_LEVEL_REF,
                 "Dependency rule references unknown level '" + rule.determinantRef + "'.",
                 schemaName,
                 levelName,
@@ -551,9 +555,17 @@ public class SchemaValidationService {
             );
         } else if (count > 1) {
             result.addWarn(
-                "AMBIGUOUS_DEPENDENCY_LEVEL_REF",
+                DependencyRegistry.DependencyIssueCodes.AMBIGUOUS_DEPENDENCY_LEVEL_REF,
                 "Dependency rule references level name '" + rule.determinantRef
                     + "' that matches multiple levels.",
+                schemaName,
+                levelName,
+                "Use determinant level unique name in drilldown.dependsOn."
+            );
+        } else {
+            result.addInfo(
+                DependencyRegistry.DependencyIssueCodes.UNQUALIFIED_DEPENDENCY_LEVEL_REF,
+                "Dependency rule references level by name '" + rule.determinantRef + "'.",
                 schemaName,
                 levelName,
                 "Use determinant level unique name in drilldown.dependsOn."
