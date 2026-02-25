@@ -10,6 +10,7 @@ import java.io.File;
 public class SchemaValidationStartupListener implements ServletContextListener {
     private static final String DEFAULT_SCHEMA_DIR =
         "/usr/local/tomcat/webapps/emondrian/WEB-INF/schema";
+    private static final int MAX_DEPENDENCY_ISSUES_TO_LOG = 20;
 
     private final SchemaValidationService validationService = new SchemaValidationService();
 
@@ -39,6 +40,7 @@ public class SchemaValidationStartupListener implements ServletContextListener {
                 + (message.level == null ? "" : " | level=" + message.level)
                 + (message.recommendation == null ? "" : " | hint=" + message.recommendation));
         }
+        logDependencyIssues(context, dependencyReport);
 
         if (!result.isOk()) {
             throw new IllegalStateException(
@@ -81,5 +83,33 @@ public class SchemaValidationStartupListener implements ServletContextListener {
             || "true".equals(normalized)
             || "yes".equals(normalized)
             || "on".equals(normalized);
+    }
+
+    private static void logDependencyIssues(
+        ServletContext context,
+        SchemaDependencyValidationReport dependencyReport)
+    {
+        if (context == null || dependencyReport == null) {
+            return;
+        }
+        int index = 0;
+        for (mondrian.rolap.sql.dependency.DependencyRegistry.DependencyValidationIssue issue
+            : dependencyReport.getIssues())
+        {
+            if (issue == null) {
+                continue;
+            }
+            if (index >= MAX_DEPENDENCY_ISSUES_TO_LOG) {
+                context.log("[schema-validator][dependency] additional issues truncated. total="
+                    + dependencyReport.getIssues().size());
+                break;
+            }
+            index++;
+            context.log("[schema-validator][dependency][" + issue.getSeverity() + "][" + issue.getCode() + "] "
+                + issue.getMessage()
+                + (issue.getCube() == null ? "" : " | cube=" + issue.getCube())
+                + (issue.getLevel() == null ? "" : " | level=" + issue.getLevel())
+                + (issue.getRecommendation() == null ? "" : " | hint=" + issue.getRecommendation()));
+        }
     }
 }
