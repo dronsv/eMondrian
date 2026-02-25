@@ -16,6 +16,7 @@ public class SchemaValidationServlet extends HttpServlet {
         "/usr/local/tomcat/webapps/emondrian/WEB-INF/schema";
     private static final int MAX_REQUEST_BODY_CHARS = 8 * 1024 * 1024;
     private static final int MAX_JSON_DEPTH = 32;
+    private static final int MAX_DEPENDENCY_ISSUES_IN_RESPONSE = 200;
 
     private final SchemaValidationService validationService = new SchemaValidationService();
 
@@ -523,6 +524,44 @@ public class SchemaValidationServlet extends HttpServlet {
             out.append(",\"warn\":").append(dependencyReport.getWarnCount());
             out.append(",\"info\":").append(dependencyReport.getInfoCount());
             out.append('}');
+            out.append(",\"issues_truncated\":")
+                .append(dependencyReport.getIssues().size() > MAX_DEPENDENCY_ISSUES_IN_RESPONSE);
+            out.append(",\"issues\":[");
+            boolean firstDependencyIssue = true;
+            int emitted = 0;
+            for (mondrian.rolap.sql.dependency.DependencyRegistry.DependencyValidationIssue issue
+                : dependencyReport.getIssues())
+            {
+                if (issue == null) {
+                    continue;
+                }
+                if (emitted >= MAX_DEPENDENCY_ISSUES_IN_RESPONSE) {
+                    break;
+                }
+                if (!firstDependencyIssue) {
+                    out.append(',');
+                }
+                firstDependencyIssue = false;
+                emitted++;
+                out.append('{');
+                out.append("\"severity\":\"")
+                    .append(escapeJson(String.valueOf(issue.getSeverity()).toLowerCase()))
+                    .append('"');
+                out.append(",\"code\":\"").append(escapeJson(issue.getCode())).append('"');
+                out.append(",\"message\":\"").append(escapeJson(issue.getMessage())).append('"');
+                if (issue.getCube() != null) {
+                    out.append(",\"cube\":\"").append(escapeJson(issue.getCube())).append('"');
+                }
+                if (issue.getLevel() != null) {
+                    out.append(",\"level\":\"").append(escapeJson(issue.getLevel())).append('"');
+                }
+                if (issue.getRecommendation() != null) {
+                    out.append(",\"recommendation\":\"")
+                        .append(escapeJson(issue.getRecommendation())).append('"');
+                }
+                out.append('}');
+            }
+            out.append(']');
             out.append('}');
         }
         out.append(",\"messages\":[");
