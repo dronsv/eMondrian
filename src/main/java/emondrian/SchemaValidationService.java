@@ -26,10 +26,14 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 public class SchemaValidationService {
+    private static final String UNICODE_IDENTIFIER_REGEX =
+        "[\\p{L}_][\\p{L}\\p{N}_]*";
     private static final Pattern IDENTIFIER_PATTERN =
-        Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
+        Pattern.compile("^" + UNICODE_IDENTIFIER_REGEX + "$");
     private static final Pattern DEPENDS_ON_REF_PATTERN =
-        Pattern.compile("property:([A-Za-z_][A-Za-z0-9_]*)");
+        Pattern.compile(
+            "property:(" + UNICODE_IDENTIFIER_REGEX + ")",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
     private static final String DEPENDS_ON_ANNOTATION_NAME = "drilldown.dependsOn";
     private final MondrianSchemaDependencyValidationAdapter dependencyValidationAdapter =
         new MondrianSchemaDependencyValidationAdapter(this);
