@@ -19,7 +19,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -30,10 +29,6 @@ public class SchemaValidationService {
         "[\\p{L}_][\\p{L}\\p{N}_]*";
     private static final Pattern IDENTIFIER_PATTERN =
         Pattern.compile("^" + UNICODE_IDENTIFIER_REGEX + "$");
-    private static final Pattern DEPENDS_ON_REF_PATTERN =
-        Pattern.compile(
-            "property:(" + UNICODE_IDENTIFIER_REGEX + ")",
-            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
     private static final String DEPENDS_ON_ANNOTATION_NAME = "drilldown.dependsOn";
     private final MondrianSchemaDependencyValidationAdapter dependencyValidationAdapter =
         new MondrianSchemaDependencyValidationAdapter(this);
@@ -269,7 +264,8 @@ public class SchemaValidationService {
                     result,
                     schemaName,
                     levelName);
-                LinkedHashSet<String> referencedProperties = extractDependsOnReferences(dependsOnText);
+                LinkedHashSet<String> referencedProperties =
+                    extractDependsOnReferences(parsedRules);
                 if (referencedProperties.isEmpty()) {
                     result.addWarn(
                         "DEPENDS_ON_WITHOUT_PROPERTY_REFS",
@@ -365,11 +361,24 @@ public class SchemaValidationService {
         return found ? out.toString() : null;
     }
 
-    private static LinkedHashSet<String> extractDependsOnReferences(String text) {
+    private static LinkedHashSet<String> extractDependsOnReferences(
+        List<ParsedDependsOnRule> rules)
+    {
         LinkedHashSet<String> refs = new LinkedHashSet<String>();
-        Matcher matcher = DEPENDS_ON_REF_PATTERN.matcher(text == null ? "" : text);
-        while (matcher.find()) {
-            refs.add(matcher.group(1));
+        if (rules == null || rules.isEmpty()) {
+            return refs;
+        }
+        for (ParsedDependsOnRule rule : rules) {
+            if (rule == null || rule.parseError != null) {
+                continue;
+            }
+            if (!"property".equals(rule.mappingType)) {
+                continue;
+            }
+            String propertyName = trimToNull(rule.mappingProperty);
+            if (propertyName != null) {
+                refs.add(propertyName);
+            }
         }
         return refs;
     }
