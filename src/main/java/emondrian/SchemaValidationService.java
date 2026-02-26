@@ -271,7 +271,8 @@ public class SchemaValidationService {
                 LinkedHashSet<String> referencedProperties =
                     extractDependsOnReferences(parsedRules);
                 if (referencedProperties.isEmpty()
-                    && !hasAncestorDependsOnRule(parsedRules)) {
+                    && !hasAncestorDependsOnRule(parsedRules)
+                    && !hasInferredPropertyDependsOnRule(parsedRules)) {
                     result.addWarn(
                         "DEPENDS_ON_WITHOUT_PROPERTY_REFS",
                         "drilldown.dependsOn has no property:... references.",
@@ -407,6 +408,21 @@ public class SchemaValidationService {
         return false;
     }
 
+    private static boolean hasInferredPropertyDependsOnRule(List<ParsedDependsOnRule> rules) {
+        if (rules == null || rules.isEmpty()) {
+            return false;
+        }
+        for (ParsedDependsOnRule rule : rules) {
+            if (rule == null || rule.parseError != null) {
+                continue;
+            }
+            if ("property".equals(rule.mappingType) && rule.propertyInferenceRequested) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static List<ParsedDependsOnRule> parseDependsOnRules(String text) {
         if (isBlank(text)) {
             return Collections.emptyList();
@@ -497,7 +513,8 @@ public class SchemaValidationService {
                 step.determinantRef,
                 "property",
                 step.mappingProperty,
-                step.requiresTimeFilter));
+                step.requiresTimeFilter,
+                step.propertyInferenceRequested));
         }
         return result;
     }
@@ -515,21 +532,32 @@ public class SchemaValidationService {
             return null;
         }
         int eq = step.indexOf('=');
-        if (eq <= 0 || eq >= step.length() - 1) {
-            return ParsedDependsOnChainStep.error(
-                "Invalid dependency chain step '" + step + "' in rule: " + fullText
-                    + ". Use [Level Unique Name]=property_name");
+        String determinantRef;
+        String propertyName;
+        boolean inferProperty;
+        if (eq < 0) {
+            determinantRef = step;
+            propertyName = null;
+            inferProperty = true;
+        } else {
+            if (eq == 0 || eq >= step.length() - 1) {
+                return ParsedDependsOnChainStep.error(
+                    "Invalid dependency chain step '" + step + "' in rule: " + fullText
+                        + ". Use [Level Unique Name] or [Level Unique Name]=property_name");
+            }
+            determinantRef = step.substring(0, eq).trim();
+            propertyName = step.substring(eq + 1).trim();
+            inferProperty = false;
         }
-        String determinantRef = step.substring(0, eq).trim();
-        String propertyName = step.substring(eq + 1).trim();
-        if (isBlank(determinantRef) || isBlank(propertyName)) {
+        if (isBlank(determinantRef) || (!inferProperty && isBlank(propertyName))) {
             return ParsedDependsOnChainStep.error(
                 "Invalid dependency chain step '" + step + "' in rule: " + fullText
-                    + ". Use [Level Unique Name]=property_name");
+                    + ". Use [Level Unique Name] or [Level Unique Name]=property_name");
         }
         return ParsedDependsOnChainStep.ok(
             determinantRef,
             propertyName,
+            inferProperty,
             requiresTimeFilter);
     }
 
@@ -939,6 +967,7 @@ public class SchemaValidationService {
         final String mappingType;
         final String mappingProperty;
         final boolean requiresTimeFilter;
+        final boolean propertyInferenceRequested;
         final String parseError;
 
         private ParsedDependsOnRule(
@@ -946,12 +975,14 @@ public class SchemaValidationService {
             String mappingType,
             String mappingProperty,
             boolean requiresTimeFilter,
+            boolean propertyInferenceRequested,
             String parseError)
         {
             this.determinantRef = determinantRef;
             this.mappingType = mappingType;
             this.mappingProperty = mappingProperty;
             this.requiresTimeFilter = requiresTimeFilter;
+            this.propertyInferenceRequested = propertyInferenceRequested;
             this.parseError = parseError;
         }
 
@@ -961,16 +992,32 @@ public class SchemaValidationService {
             String mappingProperty,
             boolean requiresTimeFilter)
         {
+            return ok(
+                determinantRef,
+                mappingType,
+                mappingProperty,
+                requiresTimeFilter,
+                false);
+        }
+
+        static ParsedDependsOnRule ok(
+            String determinantRef,
+            String mappingType,
+            String mappingProperty,
+            boolean requiresTimeFilter,
+            boolean propertyInferenceRequested)
+        {
             return new ParsedDependsOnRule(
                 determinantRef,
                 mappingType,
                 mappingProperty,
                 requiresTimeFilter,
+                propertyInferenceRequested,
                 null);
         }
 
         static ParsedDependsOnRule error(String parseError) {
-            return new ParsedDependsOnRule(null, null, null, false, parseError);
+            return new ParsedDependsOnRule(null, null, null, false, false, parseError);
         }
 
         boolean sameSemantics(ParsedDependsOnRule other) {
@@ -986,6 +1033,9 @@ public class SchemaValidationService {
             if (!safeEquals(mappingProperty, other.mappingProperty)) {
                 return false;
             }
+            if (propertyInferenceRequested != other.propertyInferenceRequested) {
+                return false;
+            }
             return requiresTimeFilter == other.requiresTimeFilter;
         }
 
@@ -997,17 +1047,20 @@ public class SchemaValidationService {
     private static final class ParsedDependsOnChainStep {
         final String determinantRef;
         final String mappingProperty;
+        final boolean propertyInferenceRequested;
         final boolean requiresTimeFilter;
         final String parseError;
 
         private ParsedDependsOnChainStep(
             String determinantRef,
             String mappingProperty,
+            boolean propertyInferenceRequested,
             boolean requiresTimeFilter,
             String parseError)
         {
             this.determinantRef = determinantRef;
             this.mappingProperty = mappingProperty;
+            this.propertyInferenceRequested = propertyInferenceRequested;
             this.requiresTimeFilter = requiresTimeFilter;
             this.parseError = parseError;
         }
@@ -1015,17 +1068,19 @@ public class SchemaValidationService {
         static ParsedDependsOnChainStep ok(
             String determinantRef,
             String mappingProperty,
+            boolean propertyInferenceRequested,
             boolean requiresTimeFilter)
         {
             return new ParsedDependsOnChainStep(
                 determinantRef,
                 mappingProperty,
+                propertyInferenceRequested,
                 requiresTimeFilter,
                 null);
         }
 
         static ParsedDependsOnChainStep error(String parseError) {
-            return new ParsedDependsOnChainStep(null, null, false, parseError);
+            return new ParsedDependsOnChainStep(null, null, false, false, parseError);
         }
     }
 }
