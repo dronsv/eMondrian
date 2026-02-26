@@ -30,6 +30,7 @@ public class SchemaValidationService {
     private static final Pattern IDENTIFIER_PATTERN =
         Pattern.compile("^" + UNICODE_IDENTIFIER_REGEX + "$");
     private static final String DEPENDS_ON_ANNOTATION_NAME = "drilldown.dependsOn";
+    private static final String DEPENDS_ON_CHAIN_ANNOTATION_NAME = "drilldown.dependsOnChain";
     private final MondrianSchemaDependencyValidationAdapter dependencyValidationAdapter =
         new MondrianSchemaDependencyValidationAdapter(this);
 
@@ -253,10 +254,13 @@ public class SchemaValidationService {
                 }
             }
 
-            String dependsOnText = collectDependsOnText(level);
-            boolean hasDependsOn = dependsOnText != null;
+            String dependsOnText = collectAnnotationText(level, DEPENDS_ON_ANNOTATION_NAME);
+            String dependsOnChainText = collectAnnotationText(level, DEPENDS_ON_CHAIN_ANNOTATION_NAME);
+            boolean hasDependsOn = dependsOnText != null || dependsOnChainText != null;
             if (hasDependsOn) {
-                List<ParsedDependsOnRule> parsedRules = parseDependsOnRules(dependsOnText);
+                List<ParsedDependsOnRule> parsedRules = new ArrayList<ParsedDependsOnRule>();
+                parsedRules.addAll(parseDependsOnRules(dependsOnText));
+                parsedRules.addAll(parseDependsOnChainRules(dependsOnChainText));
                 validateDependsOnRuleSyntaxAndSafety(
                     parsedRules,
                     hasTimeDimension,
@@ -266,7 +270,8 @@ public class SchemaValidationService {
                     levelName);
                 LinkedHashSet<String> referencedProperties =
                     extractDependsOnReferences(parsedRules);
-                if (referencedProperties.isEmpty()) {
+                if (referencedProperties.isEmpty()
+                    && !hasAncestorDependsOnRule(parsedRules)) {
                     result.addWarn(
                         "DEPENDS_ON_WITHOUT_PROPERTY_REFS",
                         "drilldown.dependsOn has no property:... references.",
@@ -341,7 +346,7 @@ public class SchemaValidationService {
         return document;
     }
 
-    private static String collectDependsOnText(Element level) {
+    private static String collectAnnotationText(Element level, String annotationNameToCollect) {
         NodeList annotationNodes = level.getElementsByTagName("Annotation");
         StringBuilder out = new StringBuilder();
         boolean found = false;
@@ -352,13 +357,17 @@ public class SchemaValidationService {
             }
             Element annotation = (Element) annotationNode;
             String annotationName = trimToNull(annotation.getAttribute("name"));
-            if (!DEPENDS_ON_ANNOTATION_NAME.equals(annotationName)) {
+            if (!safeEquals(annotationNameToCollect, annotationName)) {
                 continue;
             }
             found = true;
             out.append(' ').append(normalized(annotation.getTextContent()));
         }
         return found ? out.toString() : null;
+    }
+
+    private static String collectDependsOnText(Element level) {
+        return collectAnnotationText(level, DEPENDS_ON_ANNOTATION_NAME);
     }
 
     private static LinkedHashSet<String> extractDependsOnReferences(
@@ -383,6 +392,21 @@ public class SchemaValidationService {
         return refs;
     }
 
+    private static boolean hasAncestorDependsOnRule(List<ParsedDependsOnRule> rules) {
+        if (rules == null || rules.isEmpty()) {
+            return false;
+        }
+        for (ParsedDependsOnRule rule : rules) {
+            if (rule == null || rule.parseError != null) {
+                continue;
+            }
+            if ("ancestor".equals(rule.mappingType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static List<ParsedDependsOnRule> parseDependsOnRules(String text) {
         if (isBlank(text)) {
             return Collections.emptyList();
@@ -396,6 +420,117 @@ public class SchemaValidationService {
             }
         }
         return result;
+    }
+
+    private static List<ParsedDependsOnRule> parseDependsOnChainRules(String text) {
+        if (isBlank(text)) {
+            return Collections.emptyList();
+        }
+        String[] optionSplit = text.split("\\|");
+        if (optionSplit.length == 0) {
+            return Collections.emptyList();
+        }
+        String chainBody = optionSplit[0] == null ? "" : optionSplit[0].trim();
+        if (chainBody.isEmpty()) {
+            return Collections.<ParsedDependsOnRule>singletonList(
+                ParsedDependsOnRule.error("Dependency chain is empty: " + text));
+        }
+
+        boolean requiresTimeFilter = false;
+        for (int i = 1; i < optionSplit.length; i++) {
+            String option = optionSplit[i] == null ? "" : optionSplit[i].trim();
+            if (option.isEmpty()) {
+                continue;
+            }
+            String lower = option.toLowerCase();
+            if ("requirestimefilter".equals(lower)
+                || "requirestimefilter=true".equals(lower)
+                || "requirestimefilter=false".equals(lower))
+            {
+                requiresTimeFilter = !"requirestimefilter=false".equals(lower);
+                continue;
+            }
+            return Collections.<ParsedDependsOnRule>singletonList(
+                ParsedDependsOnRule.error(
+                    "Unsupported dependency chain option '" + option + "' in rule: " + text));
+        }
+
+        String[] rawSteps = chainBody.split(">");
+        List<ParsedDependsOnChainStep> steps =
+            new ArrayList<ParsedDependsOnChainStep>(rawSteps.length);
+        for (String rawStep : rawSteps) {
+            ParsedDependsOnChainStep rule =
+                parseDependsOnChainStep(rawStep, requiresTimeFilter, text);
+            if (rule != null) {
+                steps.add(rule);
+            }
+        }
+        return expandDependsOnChainTransitively(steps, text);
+    }
+
+    private static List<ParsedDependsOnRule> expandDependsOnChainTransitively(
+        List<ParsedDependsOnChainStep> steps,
+        String fullText)
+    {
+        if (steps == null || steps.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<ParsedDependsOnRule> result = new ArrayList<ParsedDependsOnRule>(steps.size());
+        java.util.Set<String> seenDeterminants = new java.util.LinkedHashSet<String>();
+        for (ParsedDependsOnChainStep step : steps) {
+            if (step == null) {
+                continue;
+            }
+            if (step.parseError != null) {
+                result.add(ParsedDependsOnRule.error(step.parseError));
+                continue;
+            }
+            if (!seenDeterminants.add(step.determinantRef)) {
+                result.add(ParsedDependsOnRule.error(
+                    "Duplicate determinant level '" + step.determinantRef
+                        + "' in dependency chain: " + fullText));
+                continue;
+            }
+            // Runtime consumes pair-wise rules. Chain DSL compiles to a canonical
+            // transitive pair set in chain order.
+            result.add(ParsedDependsOnRule.ok(
+                step.determinantRef,
+                "property",
+                step.mappingProperty,
+                step.requiresTimeFilter));
+        }
+        return result;
+    }
+
+    private static ParsedDependsOnChainStep parseDependsOnChainStep(
+        String rawStep,
+        boolean requiresTimeFilter,
+        String fullText)
+    {
+        if (rawStep == null) {
+            return null;
+        }
+        String step = rawStep.trim();
+        if (step.isEmpty()) {
+            return null;
+        }
+        int eq = step.indexOf('=');
+        if (eq <= 0 || eq >= step.length() - 1) {
+            return ParsedDependsOnChainStep.error(
+                "Invalid dependency chain step '" + step + "' in rule: " + fullText
+                    + ". Use [Level Unique Name]=property_name");
+        }
+        String determinantRef = step.substring(0, eq).trim();
+        String propertyName = step.substring(eq + 1).trim();
+        if (isBlank(determinantRef) || isBlank(propertyName)) {
+            return ParsedDependsOnChainStep.error(
+                "Invalid dependency chain step '" + step + "' in rule: " + fullText
+                    + ". Use [Level Unique Name]=property_name");
+        }
+        return ParsedDependsOnChainStep.ok(
+            determinantRef,
+            propertyName,
+            requiresTimeFilter);
     }
 
     private static ParsedDependsOnRule parseDependsOnRule(String rawToken) {
@@ -593,6 +728,10 @@ public class SchemaValidationService {
         }
         String trimmed = text.trim();
         return trimmed.startsWith("[") && trimmed.indexOf("].[") >= 0;
+    }
+
+    private static boolean safeEquals(String left, String right) {
+        return left == null ? right == null : left.equals(right);
     }
 
     private static Map<String, Integer> collectSchemaLevelNameCounts(NodeList levelNodes) {
@@ -852,6 +991,41 @@ public class SchemaValidationService {
 
         private static boolean safeEquals(Object left, Object right) {
             return left == null ? right == null : left.equals(right);
+        }
+    }
+
+    private static final class ParsedDependsOnChainStep {
+        final String determinantRef;
+        final String mappingProperty;
+        final boolean requiresTimeFilter;
+        final String parseError;
+
+        private ParsedDependsOnChainStep(
+            String determinantRef,
+            String mappingProperty,
+            boolean requiresTimeFilter,
+            String parseError)
+        {
+            this.determinantRef = determinantRef;
+            this.mappingProperty = mappingProperty;
+            this.requiresTimeFilter = requiresTimeFilter;
+            this.parseError = parseError;
+        }
+
+        static ParsedDependsOnChainStep ok(
+            String determinantRef,
+            String mappingProperty,
+            boolean requiresTimeFilter)
+        {
+            return new ParsedDependsOnChainStep(
+                determinantRef,
+                mappingProperty,
+                requiresTimeFilter,
+                null);
+        }
+
+        static ParsedDependsOnChainStep error(String parseError) {
+            return new ParsedDependsOnChainStep(null, null, false, parseError);
         }
     }
 }
