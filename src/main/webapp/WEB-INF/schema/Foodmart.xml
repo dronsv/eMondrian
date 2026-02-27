@@ -270,7 +270,7 @@ CONCAT(CONCAT("customer"."fname", ' '), "customer"."lname")
 "fname" || ' ' || "lname"
           </SQL>
           <SQL dialect="generic">
-fullname
+"customer"."fullname"
           </SQL>
         </NameExpression>
         <OrdinalExpression>
@@ -305,7 +305,7 @@ CONCAT(CONCAT("customer"."fname", ' '), "customer"."lname")
 "fname" || ' ' || "lname"
           </SQL>
           <SQL dialect="generic">
-fullname
+"customer"."fullname"
           </SQL>
         </OrdinalExpression>
         <Property name="Gender" column="gender"/>
@@ -719,7 +719,7 @@ CONCAT(CONCAT("customer"."fname", ' '), "customer"."lname")
 "customer"."fullname"
           </SQL>
           <SQL dialect="generic">
-fullname
+"customer"."fullname"
           </SQL>
         </KeyExpression>
         <Property name="Gender" column="gender"/>
