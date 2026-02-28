@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 import javax.xml.XMLConstants;
@@ -35,14 +36,25 @@ public class SchemaValidationService {
         new MondrianSchemaDependencyValidationAdapter(this);
 
     public ValidationResult validateDirectory(File schemaDir, boolean failOnWarn) {
+        return validateDirectory(schemaDir, failOnWarn, Locale.getDefault());
+    }
+
+    public ValidationResult validateDirectory(
+        File schemaDir,
+        boolean failOnWarn,
+        Locale locale)
+    {
         ValidationResult result = new ValidationResult(failOnWarn);
         if (schemaDir == null || !schemaDir.exists() || !schemaDir.isDirectory()) {
             result.addWarn(
                 "SCHEMA_DIR_NOT_FOUND",
-                "Schema directory not found: " + (schemaDir == null ? "<null>" : schemaDir.getAbsolutePath()),
+                msg(
+                    locale,
+                    "schema.dir.not.found.message",
+                    schemaDir == null ? "<null>" : schemaDir.getAbsolutePath()),
                 null,
                 null,
-                "Set EMONDRIAN_SCHEMA_DIR to a valid directory."
+                msg(locale, "schema.dir.not.found.recommendation")
             );
             return result;
         }
@@ -51,10 +63,10 @@ public class SchemaValidationService {
         if (files == null) {
             result.addWarn(
                 "SCHEMA_DIR_READ_ERROR",
-                "Schema directory cannot be read: " + schemaDir.getAbsolutePath(),
+                msg(locale, "schema.dir.read.error.message", schemaDir.getAbsolutePath()),
                 null,
                 null,
-                "Check file permissions."
+                msg(locale, "schema.dir.read.error.recommendation")
             );
             return result;
         }
@@ -66,15 +78,19 @@ public class SchemaValidationService {
             }
             xmlCount++;
             try {
-                ValidationResult fileResult = validateSchemaFile(file, failOnWarn);
+                ValidationResult fileResult = validateSchemaFile(file, failOnWarn, locale);
                 result.merge(fileResult);
             } catch (Exception ex) {
                 result.addFatal(
                     "SCHEMA_PARSE_ERROR",
-                    "Failed to parse schema file: " + file.getAbsolutePath() + " (" + ex.getMessage() + ")",
+                    msg(
+                        locale,
+                        "schema.parse.file.error.message",
+                        file.getAbsolutePath(),
+                        ex.getMessage()),
                     file.getName(),
                     null,
-                    "Fix XML syntax and Mondrian structure in this schema file."
+                    msg(locale, "schema.parse.file.error.recommendation")
                 );
             }
         }
@@ -82,10 +98,10 @@ public class SchemaValidationService {
         if (xmlCount == 0) {
             result.addWarn(
                 "SCHEMA_FILES_NOT_FOUND",
-                "No .xml schema files found in: " + schemaDir.getAbsolutePath(),
+                msg(locale, "schema.files.not.found.message", schemaDir.getAbsolutePath()),
                 null,
                 null,
-                "Mount at least one schema file into WEB-INF/schema."
+                msg(locale, "schema.files.not.found.recommendation")
             );
         }
 
@@ -93,14 +109,23 @@ public class SchemaValidationService {
     }
 
     public ValidationResult validateSchemaXml(String schemaXml, String schemaName, boolean failOnWarn) {
+        return validateSchemaXml(schemaXml, schemaName, failOnWarn, Locale.getDefault());
+    }
+
+    public ValidationResult validateSchemaXml(
+        String schemaXml,
+        String schemaName,
+        boolean failOnWarn,
+        Locale locale)
+    {
         ValidationResult result = new ValidationResult(failOnWarn);
         if (isBlank(schemaXml)) {
             result.addFatal(
                 "EMPTY_SCHEMA_PAYLOAD",
-                "Schema payload is empty.",
+                msg(locale, "schema.payload.empty.message"),
                 schemaName,
                 null,
-                "Send a Mondrian schema XML document in request body."
+                msg(locale, "schema.payload.empty.recommendation")
             );
             return result;
         }
@@ -108,14 +133,14 @@ public class SchemaValidationService {
         try {
             Document document = parseXml(
                 new ByteArrayInputStream(schemaXml.getBytes(StandardCharsets.UTF_8)));
-            return validateDocument(document, safeSchemaName(schemaName), failOnWarn);
+            return validateDocument(document, safeSchemaName(schemaName), failOnWarn, locale);
         } catch (Exception ex) {
             result.addFatal(
                 "SCHEMA_PARSE_ERROR",
-                "Failed to parse schema payload: " + ex.getMessage(),
+                msg(locale, "schema.parse.payload.error.message", ex.getMessage()),
                 safeSchemaName(schemaName),
                 null,
-                "Ensure request body contains valid Mondrian schema XML."
+                msg(locale, "schema.parse.payload.error.recommendation")
             );
             return result;
         }
@@ -137,12 +162,16 @@ public class SchemaValidationService {
             schemaXml, schemaName, failOnWarn);
     }
 
-    private ValidationResult validateSchemaFile(File schemaFile, boolean failOnWarn) throws Exception {
+    private ValidationResult validateSchemaFile(
+        File schemaFile,
+        boolean failOnWarn,
+        Locale locale) throws Exception
+    {
         InputStream inputStream = null;
         try {
             inputStream = new FileInputStream(schemaFile);
             Document document = parseXml(inputStream);
-            return validateDocument(document, schemaFile.getName(), failOnWarn);
+            return validateDocument(document, schemaFile.getName(), failOnWarn, locale);
         } finally {
             if (inputStream != null) {
                 inputStream.close();
@@ -150,7 +179,12 @@ public class SchemaValidationService {
         }
     }
 
-    private ValidationResult validateDocument(Document document, String schemaName, boolean failOnWarn) {
+    private ValidationResult validateDocument(
+        Document document,
+        String schemaName,
+        boolean failOnWarn,
+        Locale locale)
+    {
         ValidationResult result = new ValidationResult(failOnWarn);
         final boolean hasTimeDimension = hasTimeDimension(document);
 
@@ -184,10 +218,10 @@ public class SchemaValidationService {
             if (hasNameExpression && hasNameColumn) {
                 result.addWarn(
                     "LEVEL_HAS_NAMECOLUMN_AND_NAMEEXPRESSION",
-                    "Level has both nameColumn and NameExpression; prefer one caption source.",
+                    msg(locale, "level.namecolumn.nameexpression.both.message"),
                     schemaName,
                     levelName,
-                    "Use nameColumn for direct columns or fully-qualified SQL in NameExpression."
+                    msg(locale, "level.namecolumn.nameexpression.both.recommendation")
                 );
             }
 
@@ -217,18 +251,18 @@ public class SchemaValidationService {
                     if (IDENTIFIER_PATTERN.matcher(expression).matches()) {
                         result.addFatal(
                             "UNQUALIFIED_GENERIC_NAME_EXPRESSION",
-                            "Generic NameExpression uses bare identifier '" + expression + "'.",
+                            msg(locale, "nameexpression.generic.unqualified.message", expression),
                             schemaName,
                             levelName,
-                            "Use level@nameColumn or fully-qualified SQL expression."
+                            msg(locale, "nameexpression.generic.unqualified.recommendation")
                         );
                     } else if (expression.indexOf('.') < 0 && expression.indexOf('(') < 0) {
                         result.addWarn(
                             "WEAKLY_QUALIFIED_GENERIC_NAME_EXPRESSION",
-                            "Generic NameExpression may be weakly qualified: " + expression,
+                            msg(locale, "nameexpression.generic.weakly.qualified.message", expression),
                             schemaName,
                             levelName,
-                            "Prefer fully-qualified columns to avoid ambiguous SQL."
+                            msg(locale, "nameexpression.generic.weakly.qualified.recommendation")
                         );
                     }
                 }
@@ -267,7 +301,8 @@ public class SchemaValidationService {
                     schemaLevelNameCounts,
                     result,
                     schemaName,
-                    levelName);
+                    levelName,
+                    locale);
                 LinkedHashSet<String> referencedProperties =
                     extractDependsOnReferences(parsedRules);
                 if (referencedProperties.isEmpty()
@@ -275,10 +310,10 @@ public class SchemaValidationService {
                     && !hasInferredPropertyDependsOnRule(parsedRules)) {
                     result.addWarn(
                         "DEPENDS_ON_WITHOUT_PROPERTY_REFS",
-                        "drilldown.dependsOn has no property:... references.",
+                        msg(locale, "dependson.without.property.refs.message"),
                         schemaName,
                         levelName,
-                        "Use values like property:SomeProperty in drilldown.dependsOn."
+                        msg(locale, "dependson.without.property.refs.recommendation")
                     );
                 }
                 for (String propertyName : referencedProperties) {
@@ -286,29 +321,28 @@ public class SchemaValidationService {
                     if (dependsOnLevelValue == null) {
                         result.addFatal(
                             "DEPENDS_ON_MISSING_PROPERTY",
-                            "drilldown.dependsOn references missing Property '" + propertyName + "'.",
+                            msg(locale, "dependson.missing.property.message", propertyName),
                             schemaName,
                             levelName,
-                            "Declare Property name=\"" + propertyName
-                                + "\" dependsOnLevelValue=\"true\" on the same level."
+                            msg(locale, "dependson.missing.property.recommendation", propertyName)
                         );
                     } else if (!dependsOnLevelValue.booleanValue()) {
                         result.addFatal(
                             "DEPENDS_ON_PROPERTY_FLAG_MISSING",
-                            "Property '" + propertyName + "' must declare dependsOnLevelValue=\"true\".",
+                            msg(locale, "dependson.property.flag.missing.message", propertyName),
                             schemaName,
                             levelName,
-                            "Set dependsOnLevelValue=\"true\" for this Property."
+                            msg(locale, "dependson.property.flag.missing.recommendation")
                         );
                     }
                 }
             } else if (dependsOnLevelValueCount > 0) {
                 result.addWarn(
                     "PROPERTY_FLAG_WITHOUT_DEPENDS_ON",
-                    "Level has Property dependsOnLevelValue=\"true\" but no drilldown.dependsOn annotation.",
+                    msg(locale, "property.flag.without.dependson.message"),
                     schemaName,
                     levelName,
-                    "Add drilldown.dependsOn annotation or remove the dependsOnLevelValue flag."
+                    msg(locale, "property.flag.without.dependson.recommendation")
                 );
             }
         }
@@ -318,11 +352,16 @@ public class SchemaValidationService {
                 if (entry.getValue() > 1) {
                     result.addWarn(
                         "DUPLICATE_LEVEL_COLUMNS_WITH_NAME_EXPRESSION",
-                        "Schema has repeated level column '" + entry.getKey() + "' (" + entry.getValue()
-                            + " occurrences) while NameExpression is used.",
+                        msg(
+                            locale,
+                            "schema.duplicate.level.columns.with.nameexpression.message",
+                            entry.getKey(),
+                            entry.getValue()),
                         schemaName,
                         null,
-                        "Prefer nameColumn and avoid ambiguous caption expressions on joined dimensions."
+                        msg(
+                            locale,
+                            "schema.duplicate.level.columns.with.nameexpression.recommendation")
                     );
                 }
             }
@@ -642,7 +681,8 @@ public class SchemaValidationService {
         Map<String, Integer> schemaLevelNameCounts,
         ValidationResult result,
         String schemaName,
-        String levelName)
+        String levelName,
+        Locale locale)
     {
         if (rules == null || rules.isEmpty()) {
             return;
@@ -659,7 +699,7 @@ public class SchemaValidationService {
                     rule.parseError,
                     schemaName,
                     levelName,
-                    "Use [Level Unique Name]|ancestor or |property:PropertyName|requiresTimeFilter."
+                    msg(locale, "dependency.rule.invalid.syntax.recommendation")
                 );
                 continue;
             }
@@ -668,15 +708,18 @@ public class SchemaValidationService {
                 schemaLevelNameCounts,
                 result,
                 schemaName,
-                levelName);
+                levelName,
+                locale);
             if (rule.requiresTimeFilter && !hasTimeDimension) {
                 result.addWarn(
                     DependencyRegistry.DependencyIssueCodes
                         .REQUIRES_TIME_FILTER_WITHOUT_TIME_DIMENSION,
-                    "Dependency rule requires time filter but schema has no Time dimension.",
+                    msg(locale, "dependency.rule.requires.time.filter.without.time.dimension.message"),
                     schemaName,
                     levelName,
-                    "Remove requiresTimeFilter or define a Time dimension in this schema."
+                    msg(
+                        locale,
+                        "dependency.rule.requires.time.filter.without.time.dimension.recommendation")
                 );
             }
             ParsedDependsOnRule previous = seenValidatedByDeterminant.get(rule.determinantRef);
@@ -692,14 +735,13 @@ public class SchemaValidationService {
                     : DependencyRegistry.DependencyIssueCodes
                         .CONFLICTING_VALIDATED_DEPENDENCY_RULE,
                 duplicate
-                    ? "Duplicate dependency rule for determinant level '" + rule.determinantRef + "'."
-                    : "Conflicting dependency rules for determinant level '" + rule.determinantRef
-                        + "'. First rule should win.",
+                    ? msg(locale, "dependency.rule.duplicate.message", rule.determinantRef)
+                    : msg(locale, "dependency.rule.conflicting.message", rule.determinantRef),
                 schemaName,
                 levelName,
                 duplicate
-                    ? "Remove duplicate rule."
-                    : "Keep a single explicit rule per determinant level."
+                    ? msg(locale, "dependency.rule.duplicate.recommendation")
+                    : msg(locale, "dependency.rule.conflicting.recommendation")
             );
         }
     }
@@ -709,7 +751,8 @@ public class SchemaValidationService {
         Map<String, Integer> schemaLevelNameCounts,
         ValidationResult result,
         String schemaName,
-        String levelName)
+        String levelName,
+        Locale locale)
     {
         if (rule == null || isBlank(rule.determinantRef)) {
             return;
@@ -725,27 +768,26 @@ public class SchemaValidationService {
         if (count == 0) {
             result.addWarn(
                 DependencyRegistry.DependencyIssueCodes.UNKNOWN_DEPENDENCY_LEVEL_REF,
-                "Dependency rule references unknown level '" + rule.determinantRef + "'.",
+                msg(locale, "dependency.rule.unknown.level.ref.message", rule.determinantRef),
                 schemaName,
                 levelName,
-                "Use an existing level name or full level unique name."
+                msg(locale, "dependency.rule.unknown.level.ref.recommendation")
             );
         } else if (count > 1) {
             result.addWarn(
                 DependencyRegistry.DependencyIssueCodes.AMBIGUOUS_DEPENDENCY_LEVEL_REF,
-                "Dependency rule references level name '" + rule.determinantRef
-                    + "' that matches multiple levels.",
+                msg(locale, "dependency.rule.ambiguous.level.ref.message", rule.determinantRef),
                 schemaName,
                 levelName,
-                "Use determinant level unique name in drilldown.dependsOn."
+                msg(locale, "dependency.rule.ambiguous.level.ref.recommendation")
             );
         } else {
             result.addInfo(
                 DependencyRegistry.DependencyIssueCodes.UNQUALIFIED_DEPENDENCY_LEVEL_REF,
-                "Dependency rule references level by name '" + rule.determinantRef + "'.",
+                msg(locale, "dependency.rule.unqualified.level.ref.message", rule.determinantRef),
                 schemaName,
                 levelName,
-                "Use determinant level unique name in drilldown.dependsOn."
+                msg(locale, "dependency.rule.unqualified.level.ref.recommendation")
             );
         }
     }
@@ -756,6 +798,10 @@ public class SchemaValidationService {
         }
         String trimmed = text.trim();
         return trimmed.startsWith("[") && trimmed.indexOf("].[") >= 0;
+    }
+
+    private static String msg(Locale locale, String key, Object... args) {
+        return SchemaValidationMessages.get(locale, key, args);
     }
 
     private static boolean safeEquals(String left, String right) {

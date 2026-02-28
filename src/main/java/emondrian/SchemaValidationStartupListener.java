@@ -6,6 +6,7 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import java.io.File;
+import java.util.Locale;
 
 public class SchemaValidationStartupListener implements ServletContextListener {
     private static final String DEFAULT_SCHEMA_DIR =
@@ -17,10 +18,12 @@ public class SchemaValidationStartupListener implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         ServletContext context = sce.getServletContext();
+        final Locale locale = Locale.getDefault();
         boolean validateOnStartup = parseBool(
             System.getenv("EMONDRIAN_SCHEMA_VALIDATE_ON_STARTUP"), true);
         if (!validateOnStartup) {
-            context.log("[schema-validator] Startup schema validation is disabled.");
+            context.log("[schema-validator] "
+                + SchemaValidationMessages.get(locale, "startup.validation.disabled"));
             return;
         }
 
@@ -29,7 +32,7 @@ public class SchemaValidationStartupListener implements ServletContextListener {
         File schemaDir = resolveSchemaDir(context);
 
         SchemaValidationService.ValidationResult result =
-            validationService.validateDirectory(schemaDir, failOnWarn);
+            validationService.validateDirectory(schemaDir, failOnWarn, locale);
         SchemaDependencyValidationReport dependencyReport =
             MondrianSchemaDependencyValidationAdapter.toReport(result);
 
@@ -40,20 +43,26 @@ public class SchemaValidationStartupListener implements ServletContextListener {
                 + (message.level == null ? "" : " | level=" + message.level)
                 + (message.recommendation == null ? "" : " | hint=" + message.recommendation));
         }
-        logDependencyIssues(context, dependencyReport);
+        logDependencyIssues(context, dependencyReport, locale);
 
         if (!result.isOk()) {
             throw new IllegalStateException(
-                "Schema validation failed. fatal=" + result.getFatalCount()
-                    + ", warn=" + result.getWarnCount()
-                    + ", failOnWarn=" + result.isFailOnWarn());
+                SchemaValidationMessages.get(
+                    locale,
+                    "startup.validation.failed",
+                    result.getFatalCount(),
+                    result.getWarnCount(),
+                    result.isFailOnWarn()));
         }
 
-        context.log("[schema-validator] Schema validation completed successfully. "
-            + "fatal=" + result.getFatalCount()
-            + ", warn=" + result.getWarnCount()
-            + ", dependencyFatal=" + dependencyReport.getFatalCount()
-            + ", dependencyWarn=" + dependencyReport.getWarnCount());
+        context.log("[schema-validator] "
+            + SchemaValidationMessages.get(
+                locale,
+                "startup.validation.completed",
+                result.getFatalCount(),
+                result.getWarnCount(),
+                dependencyReport.getFatalCount(),
+                dependencyReport.getWarnCount()));
     }
 
     @Override
@@ -87,7 +96,8 @@ public class SchemaValidationStartupListener implements ServletContextListener {
 
     private static void logDependencyIssues(
         ServletContext context,
-        SchemaDependencyValidationReport dependencyReport)
+        SchemaDependencyValidationReport dependencyReport,
+        Locale locale)
     {
         if (context == null || dependencyReport == null) {
             return;
@@ -100,8 +110,11 @@ public class SchemaValidationStartupListener implements ServletContextListener {
                 continue;
             }
             if (index >= MAX_DEPENDENCY_ISSUES_TO_LOG) {
-                context.log("[schema-validator][dependency] additional issues truncated. total="
-                    + dependencyReport.getIssues().size());
+                context.log("[schema-validator][dependency] "
+                    + SchemaValidationMessages.get(
+                        locale,
+                        "startup.dependency.issues.truncated",
+                        dependencyReport.getIssues().size()));
                 break;
             }
             index++;

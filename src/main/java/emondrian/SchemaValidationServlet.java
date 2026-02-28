@@ -10,6 +10,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 public class SchemaValidationServlet extends HttpServlet {
     private static final String DEFAULT_SCHEMA_DIR =
@@ -22,10 +23,11 @@ public class SchemaValidationServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        final Locale locale = req == null ? Locale.getDefault() : req.getLocale();
         String servletPath = req.getServletPath();
         if (!"/schema/validate/current".equals(servletPath)) {
             writeError(resp, HttpServletResponse.SC_NOT_FOUND, "not_found",
-                "Use GET /schema/validate/current or POST /schema/validate.");
+                msg(locale, "api.not.found.get.message"));
             return;
         }
 
@@ -33,16 +35,17 @@ public class SchemaValidationServlet extends HttpServlet {
             || parseBool(req.getParameter("failOnWarn"), false);
         File schemaDir = resolveSchemaDir();
         SchemaValidationService.ValidationResult result =
-            validationService.validateDirectory(schemaDir, failOnWarn);
+            validationService.validateDirectory(schemaDir, failOnWarn, locale);
         writeResult(resp, result);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        final Locale locale = req == null ? Locale.getDefault() : req.getLocale();
         String servletPath = req.getServletPath();
         if (!"/schema/validate".equals(servletPath)) {
             writeError(resp, HttpServletResponse.SC_NOT_FOUND, "not_found",
-                "Use POST /schema/validate.");
+                msg(locale, "api.not.found.post.message"));
             return;
         }
 
@@ -52,7 +55,7 @@ public class SchemaValidationServlet extends HttpServlet {
         String contentType = req.getContentType() == null ? "" : req.getContentType().toLowerCase();
         String body;
         try {
-            body = readBody(req, MAX_REQUEST_BODY_CHARS);
+            body = readBody(req, MAX_REQUEST_BODY_CHARS, locale);
         } catch (RequestBodyTooLargeException ex) {
             writeError(resp, HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE, "payload_too_large",
                 ex.getMessage());
@@ -60,7 +63,7 @@ public class SchemaValidationServlet extends HttpServlet {
         }
         String schemaXml;
         if (contentType.contains("application/json")) {
-            JsonSchemaPayload payload = extractSchemaXmlFromJson(body);
+            JsonSchemaPayload payload = extractSchemaXmlFromJson(body, locale);
             if (!payload.isValid()) {
                 writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "invalid_schema_payload",
                     payload.errorMessage);
@@ -73,12 +76,12 @@ public class SchemaValidationServlet extends HttpServlet {
 
         if (schemaXml == null || schemaXml.trim().isEmpty() || schemaXml.indexOf("<Schema") < 0) {
             writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "invalid_schema_payload",
-                "Provide Mondrian schema XML via request body or JSON {\"schema_xml\":\"...\"}.");
+                msg(locale, "api.invalid.schema.payload.message"));
             return;
         }
 
         SchemaValidationService.ValidationResult result =
-            validationService.validateSchemaXml(schemaXml, "inline-schema.xml", failOnWarn);
+            validationService.validateSchemaXml(schemaXml, "inline-schema.xml", failOnWarn, locale);
         writeResult(resp, result);
     }
 
@@ -106,7 +109,7 @@ public class SchemaValidationServlet extends HttpServlet {
             || "on".equals(normalized);
     }
 
-    private static String readBody(HttpServletRequest req, int maxChars) throws IOException {
+    private static String readBody(HttpServletRequest req, int maxChars, Locale locale) throws IOException {
         BufferedReader reader = req.getReader();
         StringBuilder out = new StringBuilder();
         char[] buffer = new char[4096];
@@ -114,17 +117,17 @@ public class SchemaValidationServlet extends HttpServlet {
         while ((read = reader.read(buffer)) >= 0) {
             if (out.length() + read > maxChars) {
                 throw new RequestBodyTooLargeException(
-                    "Request body exceeds " + maxChars + " characters.");
+                    msg(locale, "api.request.body.too.large.message", maxChars));
             }
             out.append(buffer, 0, read);
         }
         return out.toString();
     }
 
-    private static JsonSchemaPayload extractSchemaXmlFromJson(String json) {
+    private static JsonSchemaPayload extractSchemaXmlFromJson(String json, Locale locale) {
         if (json == null || json.trim().isEmpty()) {
             return JsonSchemaPayload.error(
-                "JSON payload must contain string field schema_xml.");
+                msg(locale, "api.json.schema_xml.required.message"));
         }
 
         JsonCursor cursor = new JsonCursor(stripBom(json));
@@ -132,12 +135,12 @@ public class SchemaValidationServlet extends HttpServlet {
             cursor.skipWhitespace();
             if (!cursor.consume('{')) {
                 return JsonSchemaPayload.error(
-                    "JSON payload must be an object with string field schema_xml.");
+                    msg(locale, "api.json.object.required.message"));
             }
             cursor.skipWhitespace();
             if (cursor.consume('}')) {
                 return JsonSchemaPayload.error(
-                    "JSON payload must contain string field schema_xml.");
+                    msg(locale, "api.json.schema_xml.required.message"));
             }
 
             String schemaXml = null;
@@ -152,7 +155,7 @@ public class SchemaValidationServlet extends HttpServlet {
                     schemaFieldSeen = true;
                     if (cursor.isAtEnd() || cursor.peek() != '"') {
                         return JsonSchemaPayload.error(
-                            "Field schema_xml must be a JSON string.");
+                            msg(locale, "api.json.schema_xml.string.required.message"));
                     }
                     schemaXml = cursor.parseString();
                 } else {
@@ -170,17 +173,21 @@ public class SchemaValidationServlet extends HttpServlet {
             cursor.skipWhitespace();
             if (!cursor.isAtEnd()) {
                 return JsonSchemaPayload.error(
-                    "Invalid JSON payload: trailing characters after root object.");
+                    msg(locale, "api.json.trailing.characters.message"));
             }
             if (!schemaFieldSeen) {
                 return JsonSchemaPayload.error(
-                    "JSON payload must contain string field schema_xml.");
+                    msg(locale, "api.json.schema_xml.required.message"));
             }
             return JsonSchemaPayload.ok(schemaXml);
         } catch (JsonParseException ex) {
             return JsonSchemaPayload.error(
-                "Invalid JSON payload: " + ex.getMessage());
+                msg(locale, "api.json.invalid.payload.message", ex.getMessage()));
         }
+    }
+
+    private static String msg(Locale locale, String key, Object... args) {
+        return SchemaValidationMessages.get(locale, key, args);
     }
 
     private static String stripBom(String text) {
