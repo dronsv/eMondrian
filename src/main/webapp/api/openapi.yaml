@@ -1,0 +1,217 @@
+openapi: 3.0.3
+info:
+  title: eMondrian Metadata API
+  version: "1.0.0"
+  description: |
+    Lightweight metadata endpoints backed by the same `datasources.xml` and schema
+    files used by XMLA.
+servers:
+  - url: /emondrian
+tags:
+  - name: Metadata
+    description: Catalog, cube, and dimension discovery
+paths:
+  /api/v1/metadata:
+    get:
+      tags: [Metadata]
+      summary: Metadata summary
+      operationId: getMetadataSummary
+      responses:
+        "200":
+          description: Metadata summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataSummaryResponse"
+  /api/v1/metadata/version:
+    get:
+      tags: [Metadata]
+      summary: Configuration version hash
+      operationId: getMetadataVersion
+      responses:
+        "200":
+          description: Version hash and warnings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataVersionResponse"
+  /api/v1/metadata/catalogs:
+    get:
+      tags: [Metadata]
+      summary: List catalogs
+      operationId: getCatalogs
+      responses:
+        "200":
+          description: Catalog list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogsResponse"
+  /api/v1/metadata/cubes:
+    get:
+      tags: [Metadata]
+      summary: List cubes in a catalog
+      operationId: getCubes
+      parameters:
+        - in: query
+          name: catalog
+          required: true
+          schema:
+            type: string
+          description: Catalog name (case-insensitive)
+      responses:
+        "200":
+          description: Cube list for catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CubesResponse"
+        "400":
+          description: Missing required query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Catalog not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/metadata/dimensions:
+    get:
+      tags: [Metadata]
+      summary: List dimensions in a cube
+      operationId: getDimensions
+      parameters:
+        - in: query
+          name: catalog
+          required: true
+          schema:
+            type: string
+          description: Catalog name (case-insensitive)
+        - in: query
+          name: cube
+          required: true
+          schema:
+            type: string
+          description: Cube name (case-insensitive)
+      responses:
+        "200":
+          description: Dimension list for cube
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DimensionsResponse"
+        "400":
+          description: Missing required query parameter(s)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Catalog or cube not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    Warnings:
+      type: array
+      items:
+        type: string
+      description: Non-fatal parsing/config warnings
+    MetadataSummaryResponse:
+      type: object
+      required: [ok, version, catalogs, warnings]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        version:
+          type: string
+          example: 3bc6d128
+        catalogs:
+          type: array
+          items:
+            type: string
+          example: [Konfet, BeerAll]
+        warnings:
+          $ref: "#/components/schemas/Warnings"
+    MetadataVersionResponse:
+      type: object
+      required: [version, warnings]
+      properties:
+        version:
+          type: string
+          example: 3bc6d128
+        warnings:
+          $ref: "#/components/schemas/Warnings"
+    CatalogsResponse:
+      type: object
+      required: [version, catalogs, warnings]
+      properties:
+        version:
+          type: string
+          example: 3bc6d128
+        catalogs:
+          type: array
+          items:
+            type: string
+          example: [Konfet, BeerAll]
+        warnings:
+          $ref: "#/components/schemas/Warnings"
+    CubesResponse:
+      type: object
+      required: [version, data_source, catalog, cubes, warnings]
+      properties:
+        version:
+          type: string
+          example: 3bc6d128
+        data_source:
+          type: string
+          example: Konfet
+        catalog:
+          type: string
+          example: Konfet
+        cubes:
+          type: array
+          items:
+            type: string
+          example: ["Кондитерка", "Алкоголь"]
+        warnings:
+          $ref: "#/components/schemas/Warnings"
+    DimensionsResponse:
+      type: object
+      required: [version, data_source, catalog, cube, dimensions, warnings]
+      properties:
+        version:
+          type: string
+          example: 3bc6d128
+        data_source:
+          type: string
+          example: Konfet
+        catalog:
+          type: string
+          example: Konfet
+        cube:
+          type: string
+          example: "Кондитерка"
+        dimensions:
+          type: array
+          items:
+            type: string
+          example: ["Период", "ТТ", "Продукт", "Размещение"]
+        warnings:
+          $ref: "#/components/schemas/Warnings"
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          example: missing_parameters
+        message:
+          type: string
+          example: Query parameters 'catalog' and 'cube' are required

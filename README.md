@@ -42,3 +42,12 @@ eMondrian also exposes lightweight metadata endpoints based on the same
 - `GET /emondrian/api/v1/metadata/dimensions?catalog=<CatalogName>&cube=<CubeName>`
 
 These endpoints require no separate database connection settings.
+
+### OpenAPI / Swagger preview
+- OpenAPI YAML: `GET /emondrian/api/openapi.yaml`
+- Swagger UI preview: `GET /emondrian/api/openapi-preview.html`
+
+Notes:
+- `catalog` and `cube` query parameters are case-insensitive.
+- For non-ASCII names in query parameters (for example, Cyrillic cube names),
+  use URL encoding.
