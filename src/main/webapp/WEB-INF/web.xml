@@ -122,6 +122,10 @@
     <servlet-name>SchemaValidationServlet</servlet-name>
     <servlet-class>emondrian.SchemaValidationServlet</servlet-class>
   </servlet>
+  <servlet>
+    <servlet-name>MetadataServlet</servlet-name>
+    <servlet-class>emondrian.MetadataServlet</servlet-class>
+  </servlet>
 
   <servlet-mapping>
     <servlet-name>MondrianXmlaServlet</servlet-name>
@@ -138,6 +142,14 @@
   <servlet-mapping>
     <servlet-name>SchemaValidationServlet</servlet-name>
     <url-pattern>/schema/validate/current</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>MetadataServlet</servlet-name>
+    <url-pattern>/api/v1/metadata</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>MetadataServlet</servlet-name>
+    <url-pattern>/api/v1/metadata/*</url-pattern>
   </servlet-mapping>
 
   <servlet>

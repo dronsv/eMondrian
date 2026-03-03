@@ -30,3 +30,15 @@ To connect to mondrian from ADOMD.Net application you must use folowing connecti
 For example:
 
 *Data Source=http://localhost:8080/emondrian/xmla;* 
+
+## REST metadata endpoints
+eMondrian also exposes lightweight metadata endpoints based on the same
+`datasources.xml` and schema files used by XMLA:
+
+- `GET /emondrian/api/v1/metadata`
+- `GET /emondrian/api/v1/metadata/version`
+- `GET /emondrian/api/v1/metadata/catalogs`
+- `GET /emondrian/api/v1/metadata/cubes?catalog=<CatalogName>`
+- `GET /emondrian/api/v1/metadata/dimensions?catalog=<CatalogName>&cube=<CubeName>`
+
+These endpoints require no separate database connection settings.
