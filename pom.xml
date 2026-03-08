@@ -20,6 +20,7 @@
     <node.version>v16.13.1</node.version>
     <npm.version>8.1.2</npm.version>
     <antlr4.version>4.13.1</antlr4.version>
+    <skip.schema.editor>false</skip.schema.editor>
   </properties>
 
   <dependencies>
@@ -81,7 +82,26 @@
         </executions>
         <configuration>
           <executable>clone_schema_editor.sh</executable>
+          <skip>${skip.schema.editor}</skip>
         </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>ensure-schema-editor-dist</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <mkdir dir="${project.basedir}/src/SchemaEditor/dist"/>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>com.github.eirslett</groupId>
@@ -123,6 +143,7 @@
         <configuration>
             <nodeVersion>${node.version}</nodeVersion>
             <workingDirectory>src/SchemaEditor</workingDirectory>
+            <skip>${skip.schema.editor}</skip>
         </configuration>
       </plugin>
 
