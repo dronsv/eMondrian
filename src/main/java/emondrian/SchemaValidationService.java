@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -191,6 +192,8 @@ public class SchemaValidationService {
         NodeList levelNodes = document.getElementsByTagName("Level");
         final Map<String, Integer> schemaLevelNameCounts =
             collectSchemaLevelNameCounts(levelNodes);
+        final Map<String, String> schemaLevelRefs =
+            collectSchemaLevelRefs(document);
         Map<String, Integer> levelColumnCounts = new LinkedHashMap<String, Integer>();
         boolean hasAnyNameExpression = false;
 
@@ -367,7 +370,115 @@ public class SchemaValidationService {
             }
         }
 
+        validateAggregateLevelCoverage(
+            document,
+            schemaName,
+            locale,
+            result,
+            schemaLevelRefs);
+
         return result;
+    }
+
+    private void validateAggregateLevelCoverage(
+        Document document,
+        String schemaName,
+        Locale locale,
+        ValidationResult result,
+        Map<String, String> schemaLevelRefs)
+    {
+        if (document == null) {
+            return;
+        }
+        final NodeList aggNameNodes = document.getElementsByTagName("AggName");
+        for (int i = 0; i < aggNameNodes.getLength(); i++) {
+            final Node node = aggNameNodes.item(i);
+            if (!(node instanceof Element)) {
+                continue;
+            }
+            final Element aggName = (Element) node;
+            final String aggTableName =
+                trimToNull(aggName.getAttribute("name")) == null
+                    ? "<unnamed-agg>"
+                    : trimToNull(aggName.getAttribute("name"));
+            final Map<String, List<String>> levelRefsByColumn =
+                new LinkedHashMap<String, List<String>>();
+            final Map<String, LinkedHashSet<String>> hierarchyRefsByColumn =
+                new HashMap<String, LinkedHashSet<String>>();
+            final NodeList aggLevelNodes = aggName.getElementsByTagName("AggLevel");
+            for (int j = 0; j < aggLevelNodes.getLength(); j++) {
+                final Node aggLevelNode = aggLevelNodes.item(j);
+                if (!(aggLevelNode instanceof Element)) {
+                    continue;
+                }
+                final Element aggLevel = (Element) aggLevelNode;
+                final String levelRef = trimToNull(aggLevel.getAttribute("name"));
+                final String column = trimToNull(aggLevel.getAttribute("column"));
+                if (levelRef == null || column == null) {
+                    continue;
+                }
+                if (!schemaLevelRefs.containsKey(levelRef)) {
+                    result.addWarn(
+                        "AGG_LEVEL_UNKNOWN_LEVEL_REF",
+                        msg(
+                            locale,
+                            "agg.level.unknown.ref.message",
+                            levelRef,
+                            aggTableName),
+                        schemaName,
+                        levelRef,
+                        msg(locale, "agg.level.unknown.ref.recommendation"));
+                }
+
+                List<String> refs = levelRefsByColumn.get(column);
+                if (refs == null) {
+                    refs = new ArrayList<String>();
+                    levelRefsByColumn.put(column, refs);
+                }
+                refs.add(levelRef);
+
+                LinkedHashSet<String> hierarchyRefs = hierarchyRefsByColumn.get(column);
+                if (hierarchyRefs == null) {
+                    hierarchyRefs = new LinkedHashSet<String>();
+                    hierarchyRefsByColumn.put(column, hierarchyRefs);
+                }
+                hierarchyRefs.add(extractHierarchyRef(levelRef));
+            }
+
+            for (Map.Entry<String, List<String>> entry : levelRefsByColumn.entrySet()) {
+                final LinkedHashSet<String> distinctRefs =
+                    new LinkedHashSet<String>(entry.getValue());
+                if (distinctRefs.size() > 1) {
+                    result.addWarn(
+                        "AGG_DUPLICATE_COLUMN_LEVEL_REFS",
+                        msg(
+                            locale,
+                            "agg.column.duplicate.level.refs.message",
+                            aggTableName,
+                            entry.getKey(),
+                            distinctRefs.size(),
+                            joinList(distinctRefs)),
+                        schemaName,
+                        null,
+                        msg(locale, "agg.column.duplicate.level.refs.recommendation"));
+                }
+                final LinkedHashSet<String> hierarchyRefs =
+                    hierarchyRefsByColumn.get(entry.getKey());
+                if (hierarchyRefs != null && hierarchyRefs.size() > 1) {
+                    result.addWarn(
+                        "AGG_FLAT_HIERARCHY_COLUMN_REUSE",
+                        msg(
+                            locale,
+                            "agg.column.flat.hierarchy.reuse.message",
+                            aggTableName,
+                            entry.getKey(),
+                            joinList(hierarchyRefs)),
+                        schemaName,
+                        null,
+                        msg(locale, "agg.column.flat.hierarchy.reuse.recommendation"));
+                }
+            }
+        }
     }
 
     private static Document parseXml(InputStream inputStream) throws Exception {
@@ -827,6 +938,84 @@ public class SchemaValidationService {
             counts.put(name, prev == null ? 1 : prev + 1);
         }
         return counts;
+    }
+
+    private static Map<String, String> collectSchemaLevelRefs(Document document) {
+        final Map<String, String> refs = new LinkedHashMap<String, String>();
+        if (document == null) {
+            return refs;
+        }
+        final NodeList hierarchyNodes = document.getElementsByTagName("Hierarchy");
+        for (int i = 0; i < hierarchyNodes.getLength(); i++) {
+            final Node node = hierarchyNodes.item(i);
+            if (!(node instanceof Element)) {
+                continue;
+            }
+            final Element hierarchy = (Element) node;
+            final String hierarchyName = resolveHierarchyName(hierarchy);
+            if (hierarchyName == null) {
+                continue;
+            }
+            final NodeList childNodes = hierarchy.getChildNodes();
+            for (int j = 0; j < childNodes.getLength(); j++) {
+                final Node childNode = childNodes.item(j);
+                if (!(childNode instanceof Element)) {
+                    continue;
+                }
+                final Element child = (Element) childNode;
+                if (!"Level".equals(child.getTagName())) {
+                    continue;
+                }
+                final String levelName = trimToNull(child.getAttribute("name"));
+                if (levelName == null) {
+                    continue;
+                }
+                refs.put(
+                    "[" + hierarchyName + "].[" + levelName + "]",
+                    trimToNull(child.getAttribute("column")));
+            }
+        }
+        return refs;
+    }
+
+    private static String resolveHierarchyName(Element hierarchy) {
+        if (hierarchy == null) {
+            return null;
+        }
+        final String explicitName = trimToNull(hierarchy.getAttribute("name"));
+        if (explicitName != null) {
+            return explicitName;
+        }
+        final Node parent = hierarchy.getParentNode();
+        if (parent instanceof Element) {
+            return trimToNull(((Element) parent).getAttribute("name"));
+        }
+        return null;
+    }
+
+    private static String extractHierarchyRef(String levelRef) {
+        if (levelRef == null) {
+            return "";
+        }
+        final int separator = levelRef.indexOf("].[");
+        return separator < 0 ? levelRef : levelRef.substring(0, separator + 1);
+    }
+
+    private static String joinList(Iterable<String> values) {
+        final StringBuilder out = new StringBuilder();
+        if (values == null) {
+            return "";
+        }
+        for (String value : values) {
+            if (value == null) {
+                continue;
+            }
+            if (out.length() > 0) {
+                out.append(", ");
+            }
+            out.append(value);
+        }
+        return out.toString();
     }
 
     private static boolean hasTimeDimension(Document document) {
