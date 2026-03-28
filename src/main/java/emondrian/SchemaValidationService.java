@@ -970,9 +970,17 @@ public class SchemaValidationService {
                 if (levelName == null) {
                     continue;
                 }
+                final String columnRef = trimToNull(child.getAttribute("column"));
                 refs.put(
                     "[" + hierarchyName + "].[" + levelName + "]",
-                    trimToNull(child.getAttribute("column")));
+                    columnRef);
+                final String qualifiedHierarchyName =
+                    resolveQualifiedHierarchyName(hierarchy);
+                if (qualifiedHierarchyName != null) {
+                    refs.put(
+                        "[" + qualifiedHierarchyName + "].[" + levelName + "]",
+                        columnRef);
+                }
             }
         }
         return refs;
@@ -991,6 +999,23 @@ public class SchemaValidationService {
             return trimToNull(((Element) parent).getAttribute("name"));
         }
         return null;
+    }
+
+    private static String resolveQualifiedHierarchyName(Element hierarchy) {
+        final String hierarchyName = resolveHierarchyName(hierarchy);
+        if (hierarchyName == null || hierarchy == null) {
+            return null;
+        }
+        final Node parent = hierarchy.getParentNode();
+        if (!(parent instanceof Element)) {
+            return null;
+        }
+        final String dimensionName =
+            trimToNull(((Element) parent).getAttribute("name"));
+        if (dimensionName == null || dimensionName.equals(hierarchyName)) {
+            return null;
+        }
+        return dimensionName + "." + hierarchyName;
     }
 
     private static String extractHierarchyRef(String levelRef) {

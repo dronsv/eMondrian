@@ -31,6 +31,17 @@ public class SchemaValidationServiceTest {
         assertHasCode(result.getMessages(), "AGG_FLAT_HIERARCHY_COLUMN_REUSE");
     }
 
+    @Test
+    public void acceptsDimensionQualifiedAggLevelRef() {
+        SchemaValidationService.ValidationResult result =
+            new SchemaValidationService().validateSchemaXml(
+                schemaWithDimensionQualifiedAggLevelRef(),
+                "inline-schema.xml",
+                false);
+
+        assertMissingCode(result.getMessages(), "AGG_LEVEL_UNKNOWN_LEVEL_REF");
+    }
+
     private static void assertHasCode(
         List<SchemaValidationService.ValidationMessage> messages,
         String expectedCode)
@@ -41,6 +52,17 @@ public class SchemaValidationServiceTest {
             }
         }
         assertTrue("Expected validation message code: " + expectedCode, false);
+    }
+
+    private static void assertMissingCode(
+        List<SchemaValidationService.ValidationMessage> messages,
+        String unexpectedCode)
+    {
+        for (SchemaValidationService.ValidationMessage message : messages) {
+            if (unexpectedCode.equals(message.code)) {
+                assertTrue("Unexpected validation message code: " + unexpectedCode, false);
+            }
+        }
     }
 
     private static String schemaWithUnknownAggLevel() {
@@ -76,6 +98,22 @@ public class SchemaValidationServiceTest {
             + "<AggName name=\"agg_sales\">"
             + "<AggLevel name=\"[Product flat].[Manufacturer]\" column=\"manufacturer_group\"/>"
             + "<AggLevel name=\"[Product hier].[Manufacturer]\" column=\"manufacturer_group\"/>"
+            + "</AggName>"
+            + "</Cube>"
+            + "</Schema>";
+    }
+
+    private static String schemaWithDimensionQualifiedAggLevelRef() {
+        return "<Schema name=\"Test\">"
+            + "<Cube name=\"Sales\">"
+            + "<Table name=\"fact_sales\"/>"
+            + "<Dimension name=\"Store\">"
+            + "<Hierarchy name=\"Region\">"
+            + "<Level name=\"Region\" column=\"region\"/>"
+            + "</Hierarchy>"
+            + "</Dimension>"
+            + "<AggName name=\"agg_sales\">"
+            + "<AggLevel name=\"[Store.Region].[Region]\" column=\"region\"/>"
             + "</AggName>"
             + "</Cube>"
             + "</Schema>";
