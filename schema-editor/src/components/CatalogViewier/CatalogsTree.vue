@@ -1,7 +1,7 @@
 <template>
   <v-list density="compact" nav v-if="datasourceList">
     <div ref="listItems">
-      <v-row class="align-center black--text py-1">
+      <v-row class="align-center text-black py-1">
         <v-col cols=10 class="capitalize">
           DataSources
         </v-col>

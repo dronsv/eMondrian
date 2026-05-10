@@ -2,7 +2,7 @@
   <div style="margin-bottom: 2rem;">
     <v-row
       class="align-center py-1"
-      :class="arrayItems.length ? 'black--text' : 'grey--text'"
+      :class="arrayItems.length ? 'text-black' : 'text-grey'"
     >
       <v-col cols=8 class="capitalize">
         {{ arrayDescription.name }}
@@ -65,7 +65,7 @@
       width="500"
     >
       <v-card>
-        <v-card-title class="text-h5 grey lighten-2">
+        <v-card-title class="text-h5 bg-grey-lighten-2">
           Add new element
         </v-card-title>
 

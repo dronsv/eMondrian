@@ -44,7 +44,7 @@
                   @click.stop.prevent="deleteItem"
                 >
                   <v-icon
-                    class="red--text text--lighten-2"
+                    class="text-red-lighten-2"
                     v-text="'mdi-delete'"
                   ></v-icon>
                 </v-btn>
@@ -101,7 +101,7 @@
       width="500"
     >
       <v-card>
-        <v-card-title class="text-h5 grey lighten-2">
+        <v-card-title class="text-h5 bg-grey-lighten-2">
           Add new element
         </v-card-title>
 

@@ -76,7 +76,7 @@
             @click.stop.prevent="deleteItem"
           >
             <v-icon
-              class="red--text text--lighten-2"
+              class="text-red-lighten-2"
               v-text="'mdi-delete'"
             ></v-icon>
           </v-btn>

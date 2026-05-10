@@ -5,12 +5,11 @@
     width="500"
   >
     <v-card>
-      <v-card-title class="text-h5 green lighten-1 white--text">
+      <v-card-title class="text-h5 bg-green-lighten-1 text-white">
         Success
       </v-card-title>
       <v-card-text>
-        <p class="pt-6" v-html="safeMessage">
-        </p>
+        <div class="pt-6" v-html="safeMessage"></div>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>

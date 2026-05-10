@@ -47,7 +47,7 @@
               @click.stop.prevent="deleteItem"
             >
               <v-icon
-                class="red--text text--lighten-2"
+                class="text-red-lighten-2"
                 v-text="'mdi-delete'"
               ></v-icon>
             </v-btn>
@@ -76,7 +76,7 @@
     <div v-if="opened" class="element_tree_item">
       <div style="margin-bottom: 2rem;">
         <v-row
-          class="align-center py-1 black--text"
+          class="align-center py-1 text-black"
         >
           <v-col cols=8 class="capitalize">
             Catalogs

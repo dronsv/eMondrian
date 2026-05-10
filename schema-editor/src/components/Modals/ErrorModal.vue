@@ -5,12 +5,11 @@
     width="500"
   >
     <v-card>
-      <v-card-title class="text-h5 red lighten-1 white--text">
-        Error occured
+      <v-card-title class="text-h5 bg-red-lighten-1 text-white">
+        Error occurred
       </v-card-title>
       <v-card-text>
-        <p class="pt-6" v-html="safeMessage">
-        </p>
+        <div class="pt-6" v-html="safeMessage"></div>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>

@@ -30,7 +30,7 @@
             </v-row>
           </v-col>
           <v-col cols=12>
-            <span v-html="schemaDocHtml(elementDesc.doc)"></span>
+            <span v-html="elementDesc.safeDoc"></span>
           </v-col>
           <v-col cols=12 v-if="requiredAttributes.length">
             <v-card>
@@ -77,7 +77,7 @@
                       clearable
                       @update:model-value="updateXmlAttribute(attribute.name, $event)"
                     ></component>
-                    <p class="mt-n2 text-caption" v-html="schemaDocHtml(attribute.doc)"></p>
+                    <p class="mt-n2 text-caption" v-html="attribute.safeDoc"></p>
                   </v-col>
                 </template>
               </v-card-text>
@@ -105,7 +105,7 @@
                       clearable
                       @update:model-value="updateXmlAttribute(attribute.name, $event)"
                     ></component>
-                    <p class="mt-n2 text-caption" v-html="schemaDocHtml(attribute.doc)"></p>
+                    <p class="mt-n2 text-caption" v-html="attribute.safeDoc"></p>
                   </v-col>
                 </template>
               </v-card-text>
@@ -153,7 +153,16 @@ import SourceTableSelectionModal from './Modals/SourceTableSelectionModal.vue'
 import { sanitizeSchemaDocHtml } from '../utils/sanitizeHtml'
 import { getElementTextValue, setElementCDataValue } from '../utils/xmlContent'
 
-let initialValue = null;
+function withSafeDocs(desc) {
+  return {
+    ...desc,
+    safeDoc: sanitizeSchemaDocHtml(desc.doc),
+    attributes: desc.attributes.map((attribute) => ({
+      ...attribute,
+      safeDoc: sanitizeSchemaDocHtml(attribute.doc),
+    })),
+  }
+}
 
 export default {
   mixins: [
@@ -189,7 +198,7 @@ export default {
     }
   },
   data() {
-    const desc = this.getDescriptionForElement(this.element.tagName)  
+    const desc = withSafeDocs(this.getDescriptionForElement(this.element.tagName))
 
     const configuredElement = {}
     desc.attributes.forEach((e) => {
@@ -199,10 +208,10 @@ export default {
       configuredElement._value = getElementTextValue(this.element);
     }
 
-    initialValue = Object.assign({}, configuredElement);
     return {
       elementDesc: desc,
       configuredElement,
+      initialValue: Object.assign({}, configuredElement),
       confirmationDialog: false,
       newElementType: this.element.tagName,
       rules: {
@@ -231,7 +240,7 @@ export default {
       })
     },
     hasChanges() {
-      return !_.isEqual(initialValue, this.configuredElement);
+      return !_.isEqual(this.initialValue, this.configuredElement);
     },
     elementType() {
       return this.element.tagName
@@ -261,9 +270,6 @@ export default {
 
       this.$store.dispatch('SchemaEditor/updateModel', { element: this.element, action: 'editItem' })
       this.$emit('open-editor',  { element: this.element })
-    },
-    schemaDocHtml(value) {
-      return sanitizeSchemaDocHtml(value)
     },
     expandTextArea() {
       const textArea = this.$refs.textArea.$el.querySelector('textarea');
@@ -345,12 +351,10 @@ export default {
         try {
           const parser = new DOMParser()
           const updatedElement = parser.parseFromString(newElement, "text/xml").documentElement
-          console.log(updatedElement)
           const errors = updatedElement.querySelectorAll('parsererror')
           if (errors.length) throw new Error(errors[0].querySelector('div').innerHTML)
 
           if (updatedElement.tagName !== this.element.tagName) throw new Error(`Type of Element from modified XML doesn't match original element`)
-          console.log(this.element, this.element.parentNode)
           this.element.parentNode.replaceChild(updatedElement, this.element);
           this.$store.dispatch('SchemaEditor/updateModel', { element: updatedElement, action: 'edit' })
           this.$store.dispatch('SchemaEditor/closeEditor')

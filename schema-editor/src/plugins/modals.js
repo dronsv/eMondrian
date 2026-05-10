@@ -13,9 +13,9 @@ import DiagramModal from '../components/Modals/DiagramModal.vue'
 import PasteModal from '../components/Modals/PasteModal/PasteModal.vue'
 import LoadingModal from '../components/Modals/LoadingModal.vue'
 
-const DESTROY_DELAY_MS = 500
+export const DESTROY_DELAY_MS = 500
 
-function mountModal(rootApp, component, props = {}, listeners = {}) {
+export function mountModal(rootApp, component, props = {}, listeners = {}) {
   const container = document.createElement('div')
   document.body.appendChild(container)
 
@@ -39,7 +39,7 @@ function mountModal(rootApp, component, props = {}, listeners = {}) {
   return { instance, unmount }
 }
 
-function closeAndUnmount(mounted) {
+export function closeAndUnmount(mounted) {
   mounted.instance.close()
   mounted.unmount()
 }

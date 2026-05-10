@@ -5,7 +5,7 @@
     width="500"
   >
     <v-card>
-      <v-card-title class="text-h5 grey lighten-2">
+      <v-card-title class="text-h5 bg-grey-lighten-2">
         Confirm
       </v-card-title>
       <v-card-text>
