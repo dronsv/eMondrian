@@ -1,5 +1,7 @@
 import { h } from 'vue'
 
+// TODO(migration): replace legacy VListItemContent/VListItemIcon call sites with
+// Vuetify 3 list-item prepend/default slots and remove these compatibility shims.
 export const VListItemIcon = {
   name: 'VListItemIcon',
   setup(props, { slots }) {

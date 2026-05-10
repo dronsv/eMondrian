@@ -30,7 +30,7 @@
             </v-row>
           </v-col>
           <v-col cols=12>
-            <span v-html="this.elementDesc.doc"></span>
+            <span v-html="schemaDocHtml(elementDesc.doc)"></span>
           </v-col>
           <v-col cols=12 v-if="requiredAttributes.length">
             <v-card>
@@ -77,7 +77,7 @@
                       clearable
                       @update:model-value="updateXmlAttribute(attribute.name, $event)"
                     ></component>
-                    <p class="mt-n2 text-caption" v-html="attribute.doc"></p>
+                    <p class="mt-n2 text-caption" v-html="schemaDocHtml(attribute.doc)"></p>
                   </v-col>
                 </template>
               </v-card-text>
@@ -105,7 +105,7 @@
                       clearable
                       @update:model-value="updateXmlAttribute(attribute.name, $event)"
                     ></component>
-                    <p class="mt-n2 text-caption" v-html="attribute.doc"></p>
+                    <p class="mt-n2 text-caption" v-html="schemaDocHtml(attribute.doc)"></p>
                   </v-col>
                 </template>
               </v-card-text>
@@ -150,6 +150,8 @@ import RadioGroupEditor from "./Editors/RadioGroupEditor.vue"
 import OptionalBooleanEditor from "./Editors/OptionalBooleanEditor.vue"
 import DiagramModal from './Modals/DiagramModal.vue'
 import SourceTableSelectionModal from './Modals/SourceTableSelectionModal.vue'
+import { sanitizeSchemaDocHtml } from '../utils/sanitizeHtml'
+import { getElementTextValue, setElementCDataValue } from '../utils/xmlContent'
 
 let initialValue = null;
 
@@ -194,7 +196,7 @@ export default {
       configuredElement[e.name] = e.type === 'Boolean' ? this.element.getAttribute(e.name) || 'none' : this.element.getAttribute(e.name)
     });
     if (desc.hasValue) {
-      configuredElement._value = this.element.innerHTML.replace('<![CDATA[', '').replace(']]>', '').trim();
+      configuredElement._value = getElementTextValue(this.element);
     }
 
     initialValue = Object.assign({}, configuredElement);
@@ -255,11 +257,13 @@ export default {
       this.$emit('open-editor',  { element: this.element })
     },
     updateXmlValue(value) {
-      const wrappedValue = `\n<![CDATA[ \n ${value} \n ]]>\n`
-      this.element.innerHTML = wrappedValue
+      setElementCDataValue(this.element, value)
 
       this.$store.dispatch('SchemaEditor/updateModel', { element: this.element, action: 'editItem' })
       this.$emit('open-editor',  { element: this.element })
+    },
+    schemaDocHtml(value) {
+      return sanitizeSchemaDocHtml(value)
     },
     expandTextArea() {
       const textArea = this.$refs.textArea.$el.querySelector('textarea');

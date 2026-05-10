@@ -4,6 +4,7 @@ import SaveMetadata from './XmlRequests/SaveSchema.xml?raw'
 import DiscoverDatabases from './XmlRequests/DiscoverDatabases.xml?raw'
 import SaveDatabase from './XmlRequests/SaveDatabase.xml?raw'
 import DiscoverSourceTables from './XmlRequests/DiscoverSourceTables.xml?raw'
+import { xmlEscape } from '../utils/xmlContent'
 
 export function fetchCatalogList(url) {
   let resFn, rejFn
@@ -51,7 +52,7 @@ export function fetchSchemaForCatalog(url, catalog) {
     rejFn(e)
   }
 
-  const data = DiscoverMetadata.replace(/{{ DatabaseID }}/gm, catalog)
+  const data = DiscoverMetadata.replace(/{{ DatabaseID }}/gm, xmlEscape(catalog))
   xhr.send(data);
 
   return resultPromise
@@ -78,7 +79,7 @@ export function saveSchemaToCatalog(url, catalog, schema) {
     rejFn(e)
   }
 
-  const data = SaveMetadata.replace(/{{ DatabaseID }}/gm, catalog).replace(/{{ Schema }}/gm, schema)
+  const data = SaveMetadata.replace(/{{ DatabaseID }}/gm, xmlEscape(catalog)).replace(/{{ Schema }}/gm, schema)
   xhr.send(data);
 
   return resultPromise

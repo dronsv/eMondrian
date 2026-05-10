@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "serve": "vite --host 0.0.0.0",
-    "build": "vite build"
+    "build": "vite build",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@mdi/font": "7.4.47",
@@ -17,6 +18,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.6",
-    "vite": "7.3.3"
+    "jsdom": "29.1.1",
+    "vite": "7.3.3",
+    "vitest": "4.1.5"
   }
 }

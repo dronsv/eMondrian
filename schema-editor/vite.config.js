@@ -2,6 +2,10 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
+// Monaco is lazy-loaded but still emitted as one large chunk. Keep this just
+// above the current Monaco chunk size so future non-Monaco bloat remains visible.
+const MONACO_CHUNK_WARNING_LIMIT_KB = 2300
+
 function manualChunks(id) {
   if (!id.includes('/node_modules/')) return
 
@@ -27,7 +31,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    chunkSizeWarningLimit: 2300,
+    chunkSizeWarningLimit: MONACO_CHUNK_WARNING_LIMIT_KB,
     rollupOptions: {
       output: {
         manualChunks,
