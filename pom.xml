@@ -20,7 +20,10 @@
     <node.version>v16.13.1</node.version>
     <npm.version>8.1.2</npm.version>
     <antlr4.version>4.13.1</antlr4.version>
-    <skip.schema.editor>false</skip.schema.editor>
+    <!-- Disabled by default: upstream SchemaEditor is an optional Vue 2 UI
+         with known npm audit findings. Use -Dskip.schema.editor=false only
+         for explicit local/admin UI builds. -->
+    <skip.schema.editor>true</skip.schema.editor>
   </properties>
 
   <dependencies>

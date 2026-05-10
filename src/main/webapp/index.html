@@ -20,7 +20,10 @@
 </p>
 <h2>Schema Editor</h2>
 <p>
-    Use <a href="schema_editor">Schema Editor</a> to edit eMondrian schema file.
+    Schema Editor is an optional admin UI and is disabled in the production
+    image by default because the upstream Vue 2 dependency chain has known
+    npm audit findings. Build with <code>SKIP_SCHEMA_EDITOR_BUILD=false</code>
+    only when you explicitly need <a href="schema_editor">Schema Editor</a>.
 </p>
 <h2>Metadata API</h2>
 <ul>
