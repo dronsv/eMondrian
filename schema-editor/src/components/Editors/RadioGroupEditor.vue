@@ -3,8 +3,7 @@
     <div class="text-subtitle-1">{{ label }}</div>
     <v-radio-group
       v-model="model"
-      @change="$emit('change', $event)"
-      row
+      inline
     >
       <v-radio
         v-for="(item, i) in items"
@@ -18,8 +17,9 @@
 
 <script>
 export default {
+  emits: ['update:modelValue'],
   props: {
-    value: {
+    modelValue: {
       type: String,
       default: 'none'
     },
@@ -33,8 +33,16 @@ export default {
   },
   data() {
     return {
-      model: this.value
+      model: this.modelValue
     }
+  },
+  watch: {
+    model(value) {
+      this.$emit('update:modelValue', value)
+    },
+    modelValue(value) {
+      this.model = value || 'none'
+    },
   }
 }
 </script>

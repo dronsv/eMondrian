@@ -5,50 +5,55 @@
     fullscreen
   >
     <v-card>
-      <v-toolbar
-        dark
-        color="primary"
-      >
+      <v-toolbar color="primary">
         <v-toolbar-title>Diagram</v-toolbar-title>
         <v-spacer></v-spacer>
         <v-toolbar-items>
           <v-btn
             icon
-            dark
             @click="$emit('close')"
           >
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-toolbar-items>
       </v-toolbar>
-      <VueDiagramEditor
-        ref="diagram"
-        v-if="showDiagram"
-        :node-color="nodeColor"
-        :node-deletable="() => false"
-      >
-        <pre slot="node" slot-scope="{ node }">
-          <template v-if="node.id !== 'cube'">
-            <svg style="position: absolute; left: 10%; width: 80%; top: 0">
-              <template v-for="(hier, i) in  getHierarchyList(node.data)">
-                <rect :key="`${hier.getAttribute('name')}_rect`" width=10000 height="30" :y="10 + i * 35" :fill="colors['Hierarchy']" >
-                </rect>
-                <text x=5 :y="20 + i * 35" font-size="7" :key="`${hier.getAttribute('name')}_label`" fill="#fff">
-                  Hierarchy {{  hier.getAttribute('name') || 'with no name' }}
-                </text>
-                <text x=5 :y="35 + i * 35" font-size="7" :key="`${hier.getAttribute('name')}_pKey`" fill="#fff" font-weight="bold">
-                  {{  hier.getAttribute('primaryKey') }}
-                </text>
-              </template>
-            </svg>
-          </template>
-        </pre>
-      </VueDiagramEditor>
-      <div style="position: fixed; bottom: 20px; right: 20px; padding: 30px; border: 1px solid black; border-radius: 10px; background-color: white;">
-        <div v-for="color in colorsDescriptions" :key="color[0]" style="padding: 5px;">
-          <span :style="`display: inline-block; width: 15px; height: 15px; background-color: ${color[1]}; margin-right: 10px;`"></span>
-          <span>{{ color[0] }}</span> 
-        </div>
+      <div class="diagram-view">
+        <svg class="diagram-links" :viewBox="viewBox">
+          <line
+            v-for="link in linkLines"
+            :key="link.id"
+            :x1="link.x1"
+            :y1="link.y1"
+            :x2="link.x2"
+            :y2="link.y2"
+          />
+        </svg>
+        <article
+          v-for="node in nodes"
+          :key="node.id"
+          class="diagram-node"
+          :style="getNodeStyle(node)"
+        >
+          <header>{{ node.title }}</header>
+          <section
+            v-for="hier in getHierarchyList(node.data)"
+            :key="`${node.id}-${hier.getAttribute('name') || 'hierarchy'}`"
+            class="diagram-hierarchy"
+          >
+            <strong>Hierarchy {{ hier.getAttribute('name') || 'with no name' }}</strong>
+            <span>{{ hier.getAttribute('primaryKey') }}</span>
+          </section>
+        </article>
+        <aside class="diagram-legend">
+          <div
+            v-for="color in colorsDescriptions"
+            :key="color[0]"
+            class="diagram-legend-item"
+          >
+            <span :style="{ backgroundColor: color[1] }"></span>
+            <span>{{ color[0] }}</span>
+          </div>
+        </aside>
       </div>
     </v-card>
   </v-dialog>
@@ -56,8 +61,6 @@
 
 <script>
 import xmlDescriptionMixin from '../../mixins/xmlDescriptionMixin'
-import VueDiagramEditor from 'vue-diagram-editor';
-import 'vue-diagram-editor/dist/vue-diagram-editor.css';
 
 const colors = {
   Dimension: '#657ED4',
@@ -70,9 +73,6 @@ const colors = {
 }
 
 export default {
-  components: {
-    VueDiagramEditor
-  },
   props: {
     cube: {
       type: Element,
@@ -83,27 +83,45 @@ export default {
     xmlDescriptionMixin
   ],
   data: () => ({
-    showDiagram: false,
     opened: true,
-    nodes: {
-    },
-    links: {
-    },
+    nodes: [],
+    links: {},
     colors,
     colorsDescriptions: Object.entries(colors),
   }),
-  async mounted() {
-    this.parseSchema();
-    await this.$nextTick();
-    this.showDiagram = true;
-    await this.$nextTick();
-    this.init();
+  computed: {
+    viewBox() {
+      return `0 0 ${this.canvasSize.width} ${this.canvasSize.height}`
+    },
+    canvasSize() {
+      const width = Math.max(...this.nodes.map(node => node.coordinates.x + node.size.width + 80), 800)
+      const height = Math.max(...this.nodes.map(node => node.coordinates.y + node.size.height + 80), 600)
+      return { width, height }
+    },
+    linkLines() {
+      return Object.values(this.links).map((link) => {
+        const start = this.nodes.find(node => node.id === link.start_id)
+        const end = this.nodes.find(node => node.id === link.end_id)
+        const fromLeft = start.coordinates.x < end.coordinates.x
+
+        return {
+          id: link.id,
+          x1: start.coordinates.x + (fromLeft ? start.size.width : 0),
+          y1: start.coordinates.y + (start.size.height / 2),
+          x2: end.coordinates.x + (fromLeft ? 0 : end.size.width),
+          y2: end.coordinates.y + (end.size.height / 2),
+        }
+      })
+    },
+  },
+  mounted() {
+    this.parseSchema()
   },
   methods: {
     parseSchema() {
       const possibleElements = this.getElementsOfType("CubeDimension").filter(e => !e.abstract)
       const items = Array.from(this.cube.querySelectorAll(`:scope > ${possibleElements.join(', :scope >')}`))
-      
+
       const foreignKeys = items.reduce((acc, e) => {
         const key = e.getAttribute('foreignKey') || 'Fact Table'
         const storedVal = acc.find(e => e.key === key);
@@ -119,24 +137,22 @@ export default {
       }, []).sort((a, b) => b.count - a.count)
 
       this.nodes = []
+      this.links = {}
       this.nodes.push({
         id: 'cube',
         title: `${this.cube.tagName}: ${ this.cube.getAttribute('name') }`,
         size: {
-          width: 200,
-          height: 40 + 10 * foreignKeys.length
+          width: 240,
+          height: 60 + 16 * foreignKeys.length
         },
         coordinates: {
-          x: 200,
-          y: 150
+          x: 280,
+          y: 160
         },
         data: this.cube,
-        portsOut: {
-        },
-        portsIn: {
-        }
+        portsOut: {},
+        portsIn: {}
       })
-      
 
       let leftSide = 0;
       let rightSide = 0;
@@ -160,7 +176,7 @@ export default {
         }
       }
 
-      this.nodes[0].size.height = 40 + 17 * Math.max(rightSideHeirarchies, leftSideHeirarchies);
+      this.nodes[0].size.height = 60 + 18 * Math.max(rightSideHeirarchies, leftSideHeirarchies);
 
       items.sort((a, b) => {
         const aFK = foreignKeys.find((e) => e.key === (a.getAttribute('foreignKey') || 'Fact Table'))
@@ -168,28 +184,28 @@ export default {
 
         const aIndex = foreignKeys.indexOf(aFK)
         const bIndex = foreignKeys.indexOf(bFK)
-        
+
         return aIndex - bIndex;
       })
-      
+
       let leftSideHeight = 0;
       let rightSideHeight = 0;
       items.forEach((e, i) => {
         const elForeignKey = e.getAttribute('foreignKey') || 'Fact Table'
         const hierarchies = this.getHierarchyList(e);
-        let height = 30 + 40 * hierarchies.length;
+        let height = 54 + 48 * hierarchies.length;
 
         if (this.nodes[0].portsIn[elForeignKey]) {
           this.nodes.push({
             id: `dimension-${i}`,
             title: `${e.tagName}: ${ e.getAttribute('name') }`,
             size: {
-              width: 150,
+              width: 210,
               height: height,
             },
             coordinates: {
-              x: 0,
-              y: 20 + leftSideHeight
+              x: 24,
+              y: 24 + leftSideHeight
             },
             portsOut: {
               [elForeignKey]: ''
@@ -205,18 +221,18 @@ export default {
             end_port: elForeignKey
           }
 
-          leftSideHeight += height + 20;
+          leftSideHeight += height + 24;
         } else if (this.nodes[0].portsOut[elForeignKey]) {
           this.nodes.push({
             id: `dimension-${i}`,
             title: `${e.tagName}: ${ e.getAttribute('name') }`,
             size: {
-              width: 150,
+              width: 210,
               height: height,
             },
             coordinates: {
-              x: 450,
-              y: 20 + rightSideHeight
+              x: 570,
+              y: 24 + rightSideHeight
             },
             portsIn: {
               [elForeignKey]: ''
@@ -232,27 +248,18 @@ export default {
             end_port: elForeignKey
           }
 
-          rightSideHeight += height + 20;
+          rightSideHeight += height + 24;
         }
       });
-
     },
-    async init() {
-      this.$refs.diagram.setModel({
-        nodes: this.nodes,
-        links: this.links
-      });
-
-      await this.$nextTick();
-      this.$refs.diagram.$refs.diagram.spz.zoomAtPoint(0.3, {x: 50, y: 50})
-      const diagram = this.$refs.diagram.$el;
-      
-      diagram.querySelectorAll('text').forEach((e) => {
-        if (e.innerHTML.trim() === 'Fact Table') {
-          e.setAttribute('fill', colors['Fact Table']);
-        }
-      })
-      this.$refs.diagram.$refs.diagram.spz.setMinZoom(0.01)
+    getNodeStyle(node) {
+      return {
+        backgroundColor: this.nodeColor(node),
+        left: `${node.coordinates.x}px`,
+        top: `${node.coordinates.y}px`,
+        width: `${node.size.width}px`,
+        minHeight: `${node.size.height}px`,
+      }
     },
     nodeColor(node) {
       const nodeType = node.data.tagName
@@ -282,22 +289,76 @@ export default {
   }
 }
 </script>
-<style>
-  .diagram-editor__wrapper {
-    width: 100%;
-    height: 100%;
-  }
 
-  .diagram-editor__wrapper svg {
-    width: 100%;
-    height: 100%;
-  }
+<style scoped>
+.diagram-view {
+  min-height: calc(100vh - 64px);
+  overflow: auto;
+  position: relative;
+}
 
-  g > svg > svg > text {
-    font-size: 7px !important; 
-  }
+.diagram-links {
+  height: 100%;
+  min-height: calc(100vh - 64px);
+  min-width: 900px;
+  position: absolute;
+  width: 100%;
+}
 
-  svg > rect[fill-opacity] {
-    fill-opacity: 0;
-  }
+.diagram-links line {
+  stroke: rgba(13, 1, 6, 0.34);
+  stroke-width: 2;
+}
+
+.diagram-node {
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  color: #fff;
+  overflow: hidden;
+  padding: 12px;
+  position: absolute;
+}
+
+.diagram-node header {
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.diagram-hierarchy {
+  background: rgba(43, 168, 74, 0.92);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  margin-top: 8px;
+  padding: 8px;
+}
+
+.diagram-hierarchy span {
+  font-weight: 700;
+}
+
+.diagram-legend {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 10px;
+  bottom: 20px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+  padding: 16px;
+  position: fixed;
+  right: 20px;
+}
+
+.diagram-legend-item {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  padding: 4px;
+}
+
+.diagram-legend-item span:first-child {
+  display: inline-block;
+  height: 15px;
+  width: 15px;
+}
 </style>

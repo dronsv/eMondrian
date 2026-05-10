@@ -59,7 +59,8 @@ export default {
       language: 'xml',
     });
   },
-  destroyed() {
+  unmounted() {
+    this.editor?.dispose()
     document.querySelector('html').style="";
   },
   data() {

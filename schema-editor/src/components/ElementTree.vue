@@ -1,9 +1,6 @@
 <template>
-  <v-list dense nav v-if="schema">
-    <v-list-item-group
-      ref="listItems"
-      color="primary"
-    >
+  <v-list density="compact" nav v-if="schema">
+    <div ref="listItems">
       <v-row class="align-center black--text py-1">
         <v-col cols=10 class="capitalize">
           Schema
@@ -15,7 +12,7 @@
         :timestamp="timestamp"
         @open-editor="openEditor"
       />
-    </v-list-item-group>
+    </div>
   </v-list>
 </template>
 
@@ -54,20 +51,12 @@ export default {
       this.$emit('open-editor', payload)
     },
     updateEditorState(currentItem) {
-      if (currentItem !== null) {
-        const listItems = this.$refs.listItems.items.map(i => {
-          if (i.$parent.obj) return i.$parent.obj.element
-          return i.$parent.element
-        })
-        const index = listItems.indexOf(currentItem)
-        this.$refs.listItems.internalLazyValue = index
-
-        const listItemElement = this.$refs.listItems.items[index].$el;
-        listItemElement.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-      }
-      else {
-        this.$refs.listItems.internalLazyValue = null
-      }
+      if (currentItem === null) return
+      this.$refs.listItems?.querySelector('.v-list-item')?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+        behavior: "smooth"
+      });
     }
   }
 }

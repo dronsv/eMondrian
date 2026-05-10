@@ -5,7 +5,7 @@
     width="500"
   >
     <v-card>
-      <v-card-title class="text-h5 grey lighten-2">
+      <v-card-title class="text-h5 bg-grey-lighten-2">
         Select catalog
       </v-card-title>
       <v-card-text class="pa-4 text-center">
@@ -15,33 +15,35 @@
           color="primary"
           indeterminate
         ></v-progress-circular>
-        <v-list v-else>
-          <v-list-item-group
-            v-model="selectedCatalog"
-            class="text-left"
-            color="blue"
+        <v-list
+          v-else
+          class="text-left"
+          color="primary"
+        >
+          <v-list-item
+            v-for="catalog in catalogs"
+            :key="catalog.name"
+            :active="selectedCatalog === catalog"
+            :value="catalog"
+            @click="selectedCatalog = catalog"
           >
-            <v-list-item
-              v-for="(catalog, idx) in catalogs"
-              :key="idx"
-              :value="catalog"
-            >
+            <v-list-item-title>
               {{ catalog.name }}
-            </v-list-item>
-          </v-list-item-group>
+            </v-list-item-title>
+          </v-list-item>
         </v-list>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn
-          text
+          variant="text"
           @click="cancel"
         >
           Cancel
         </v-btn>
         <v-btn
           color="primary"
-          text
+          variant="text"
           :disabled="!selectedCatalog || isLoading"
           @click="selectCatalog"
         >
@@ -64,8 +66,11 @@ export default {
   },
   async mounted() {
     this.isLoading = true
-    this.catalogs = await this.fetchCatalogs(this.serverAddress)
-    this.isLoading = false
+    try {
+      this.catalogs = await this.fetchCatalogs(this.serverAddress)
+    } finally {
+      this.isLoading = false
+    }
   },
   data() {
     return {
@@ -78,20 +83,20 @@ export default {
   methods: {
     async fetchCatalogs(serverAddress) {
       try {
-        const responce = await fetchCatalogList(serverAddress)
+        const response = await fetchCatalogList(serverAddress)
 
-        const isErrorResponce = responce.querySelector('Fault')
-        if (isErrorResponce) {
-          const error = isErrorResponce.querySelector('detail > Error')
+        const errorResponse = response.querySelector('Fault')
+        if (errorResponse) {
+          const error = errorResponse.querySelector('detail > Error')
           const errorMessage = error.getAttribute('Description')
           const errorCode = error.getAttribute('ErrorCode')
-          throw new Error(`<b class="text-h6">Server returned error responce</b><br><b>Error code:</b> ${errorCode}<br><b>Error message:</b> ${errorMessage}`)
+          throw new Error(`<b class="text-h6">Server returned error response</b><br><b>Error code:</b> ${errorCode}<br><b>Error message:</b> ${errorMessage}`)
         }
 
-        const rows = responce.querySelectorAll('root > row')
+        const rows = response.querySelectorAll('root > row')
         return Array.from(rows).map(e => {
           return {
-            name: e.querySelector('CATALOG_NAME').innerHTML,
+            name: e.querySelector('CATALOG_NAME')?.textContent || '',
             node: e,
           }
         })
@@ -102,6 +107,7 @@ export default {
         } else {
           this.$errorModal.open('<b class="text-h6">Unable to load catalog list from the provided server</b>')
         }
+        return []
       }
     },
     cancel() {

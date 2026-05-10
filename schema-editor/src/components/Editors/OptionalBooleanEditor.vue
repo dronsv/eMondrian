@@ -5,8 +5,7 @@
       <v-col align-self="center" cols="11">
         <v-radio-group
           v-model="model"
-          @change="$emit('change', $event)"
-          row
+          inline
         >
           <v-radio
             v-for="(item, i) in items"
@@ -19,7 +18,7 @@
       <v-col align-self="center" cols="1">
         <v-btn
           icon
-          small
+          size="small"
           @click="reset"
         >
           <v-icon
@@ -33,8 +32,9 @@
 
 <script>
 export default {
+  emits: ['update:modelValue'],
   props: {
-    value: {
+    modelValue: {
       type: String,
       default: 'none'
     },
@@ -45,14 +45,21 @@ export default {
   },
   data() {
     return {
-      model: this.value,
+      model: this.modelValue,
       items: [ 'true', 'false' ],
     }
+  },
+  watch: {
+    model(value) {
+      this.$emit('update:modelValue', value)
+    },
+    modelValue(value) {
+      this.model = value || 'none'
+    },
   },
   methods: {
     reset() {
       this.model = 'none';
-      this.$emit('change', 'none');
     }
   }
 }

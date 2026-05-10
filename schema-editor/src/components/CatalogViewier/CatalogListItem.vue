@@ -10,11 +10,10 @@
         <v-list-item-title v-text="name"></v-list-item-title>
       </v-list-item-content>
         <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               @click.stop.prevent="copyItem"
             >
               <v-icon
@@ -26,11 +25,10 @@
         </v-tooltip>
 
         <!-- <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               @click.stop.prevent="duplicateItem"
             >
               <v-icon
@@ -42,11 +40,10 @@
         </v-tooltip> -->
 
         <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               @click.stop.prevent="deleteItem"
             >
               <v-icon

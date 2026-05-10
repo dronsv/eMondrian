@@ -8,16 +8,14 @@
         Open schema
       </v-card-title>
       <v-card-text class="pa-4">
-        <v-tabs
-          v-model="tab"
-        >
-          <v-tab href="#server">Open from server</v-tab>
-          <v-tab href="#local">Open from local file</v-tab>
+        <v-tabs v-model="tab">
+          <v-tab value="server">Open from server</v-tab>
+          <v-tab value="local">Open from local file</v-tab>
         </v-tabs>
         <v-row>
           <v-col>
-            <v-tabs-items v-model="tab">
-              <v-tab-item :value="'server'">
+            <v-window v-model="tab">
+              <v-window-item value="server">
                 <v-card-title>
                   Load schema from server
                 </v-card-title>
@@ -27,8 +25,8 @@
                   label="XMLA server address"
                 ></v-text-field>
                 <v-divider></v-divider>
-              </v-tab-item>
-              <v-tab-item :value="'local'">
+              </v-window-item>
+              <v-window-item value="local">
                 <v-card-title>
                   Upload a schema file
                 </v-card-title>
@@ -39,8 +37,8 @@
                   label="Select schema"
                 ></v-file-input>
                 <v-divider></v-divider>
-              </v-tab-item>
-            </v-tabs-items>
+              </v-window-item>
+            </v-window>
           </v-col>
         </v-row>
       </v-card-text>
@@ -69,9 +67,9 @@
 export default {
   data() {
     return {
-      serverAddress: process.env.NODE_ENV === "production" ? "../xmla" : 'https://ssemenkoff.dev/emondrian/xmla',
+      serverAddress: import.meta.env.PROD ? "../xmla" : 'https://ssemenkoff.dev/emondrian/xmla',
       schemaFile: null,
-      tab: null,
+      tab: 'server',
       opened: true,
     }
   },

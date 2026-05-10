@@ -103,7 +103,7 @@
 import ElementTree from '../components/ElementTree.vue'
 import XmlElementEditor from '../components/XmlElementEditor.vue'
 import xmlDescriptionMixin from '../mixins/xmlDescriptionMixin'
-import description from '../../public/Mondrian.xml'
+import description from '../assets/Mondrian.xml?raw'
 import { parseXmlModel } from '../utils/xmlModelParser'
 import { fetchSchemaForCatalog, saveSchemaToCatalog } from '../services/XmlaApi'
 import { createXPathFromElement } from '../utils/xPath'
@@ -131,21 +131,6 @@ export default {
   }),
 
   mounted() {
-    console.warn('Server for demo purposes:')
-    console.warn('https://ssemenkoff.dev/emondrian/xmla')
-
-    this.$root.$on('errorMessage', (e) => {
-      this.$errorModal.open(e)
-    })
-
-    this.$root.$on('removeItem', async (e) => {
-      const { confirmed } = await this.$deleteConfirmationModal.open()
-
-      if (confirmed) {
-        this.removeElement(e)
-      }
-    })
-
     const xmlModelContent = description
     const parser = new DOMParser()
   

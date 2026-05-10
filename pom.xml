@@ -17,12 +17,11 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <node.version>v16.13.1</node.version>
-    <npm.version>8.1.2</npm.version>
+    <node.version>v20.19.0</node.version>
+    <npm.version>10.8.2</npm.version>
     <antlr4.version>4.13.1</antlr4.version>
-    <!-- Disabled by default: upstream SchemaEditor is an optional Vue 2 UI
-         with known npm audit findings. Use -Dskip.schema.editor=false only
-         for explicit local/admin UI builds. -->
+    <!-- Disabled by default: SchemaEditor is an optional admin UI.
+         Use -Dskip.schema.editor=false only for explicit local/admin UI builds. -->
     <skip.schema.editor>true</skip.schema.editor>
     <schema.editor.dir>${project.basedir}/schema-editor</schema.editor.dir>
   </properties>

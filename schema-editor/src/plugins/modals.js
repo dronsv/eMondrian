@@ -1,3 +1,5 @@
+import { createApp } from 'vue'
+import store from '../store'
 import vuetify from './vuetify'
 import ConfirmationModal from '../components/Modals/ConfirmationModal.vue'
 import ErrorModal from '../components/Modals/ErrorModal.vue'
@@ -8,298 +10,214 @@ import DeleteConfirmationModal from '../components/Modals/DeleteConfirmationModa
 import ServerSelectionModal from '../components/Modals/ServerSelectionModal.vue'
 import SchemaValidationModal from '../components/Modals/SchemaValidationModal.vue'
 import DiagramModal from '../components/Modals/DiagramModal.vue'
-import { xmlViewerModal } from '../components/Modals/XmlViewerModal'
-import { pasteModal } from '../components/Modals/PasteModal'
-import LoadingModal from '../components/Modals/LoadingModal'
+import XmlViewerModal from '../components/Modals/XmlViewerModal/XmlViewerModal.vue'
+import PasteModal from '../components/Modals/PasteModal/PasteModal.vue'
+import LoadingModal from '../components/Modals/LoadingModal.vue'
+
+const DESTROY_DELAY_MS = 500
+
+function mountModal(rootApp, component, props = {}, listeners = {}) {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+
+  const modalApp = createApp(component, {
+    ...props,
+    ...listeners,
+  })
+
+  modalApp.use(store)
+  modalApp.use(vuetify)
+  Object.assign(modalApp.config.globalProperties, rootApp.config.globalProperties)
+
+  const instance = modalApp.mount(container)
+  const unmount = () => {
+    setTimeout(() => {
+      modalApp.unmount()
+      container.remove()
+    }, DESTROY_DELAY_MS)
+  }
+
+  return { instance, unmount }
+}
+
+function closeAndUnmount(mounted) {
+  mounted.instance.close()
+  mounted.unmount()
+}
+
+function register(rootApp, name, api) {
+  rootApp.config.globalProperties[name] = api
+}
 
 const Modals = {
-  install(Vue) {
-    Vue.prototype.$confirmationModal = {
+  install(app) {
+    register(app, '$confirmationModal', {
       open(text) {
-        let resolveFunction = null;
-        const confirmationPromise = new Promise((res) => {
-          resolveFunction = res
+        return new Promise((resolve) => {
+          const mounted = mountModal(app, ConfirmationModal, { text }, {
+            onCancel: () => {
+              resolve({ confirmed: false })
+              closeAndUnmount(mounted)
+            },
+            onContinue: () => {
+              resolve({ confirmed: true })
+              closeAndUnmount(mounted)
+            },
+          })
         })
-        
-        var ComponentClass = Vue.extend(ConfirmationModal)
-        var instance = new ComponentClass({
-          vuetify,
-          propsData: {
-            text,
-          }
-        });
-        instance.$mount()
-
-        instance.$on('cancel', () => {
-          resolveFunction({ confirmed: false })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        instance.$on('continue', () => {
-          resolveFunction({ confirmed: true })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        document.body.appendChild(instance.$el)
-
-        return confirmationPromise
       },
-    }
+    })
 
-    Vue.prototype.$successModal = {
+    register(app, '$successModal', {
       open(message) {
-        var ComponentClass = Vue.extend(SuccessModal)
-        var instance = new ComponentClass({
-          vuetify,
-          propsData: {
-            message,
-          }
-        });
-        instance.$mount()
-
-        instance.$on('close', () => {
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        document.body.appendChild(instance.$el)
+        const mounted = mountModal(app, SuccessModal, { message }, {
+          onClose: () => closeAndUnmount(mounted),
+        })
       },
-    }
+    })
 
-    Vue.prototype.$errorModal = {
+    register(app, '$errorModal', {
       open(message) {
-        var ComponentClass = Vue.extend(ErrorModal)
-        var instance = new ComponentClass({
-          vuetify,
-          propsData: {
-            message,
-          }
-        });
-        instance.$mount()
-
-        instance.$on('close', () => {
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        document.body.appendChild(instance.$el)
+        const mounted = mountModal(app, ErrorModal, { message }, {
+          onClose: () => closeAndUnmount(mounted),
+        })
       },
-    }
+    })
 
-    Vue.prototype.$catalogSelectionModal = {
+    register(app, '$catalogSelectionModal', {
       open(serverAddress) {
-        let resolveFunction = null;
-        const confirmationPromise = new Promise((res) => {
-          resolveFunction = res
+        return new Promise((resolve) => {
+          const mounted = mountModal(app, CatalogSelectionModal, { serverAddress }, {
+            onCancel: () => {
+              resolve({ status: 'cancelled', catalog: null })
+              closeAndUnmount(mounted)
+            },
+            onSelectCatalog: (catalog) => {
+              resolve({ status: 'success', catalog })
+              closeAndUnmount(mounted)
+            },
+          })
         })
-        
-        var ComponentClass = Vue.extend(CatalogSelectionModal)
-        var instance = new ComponentClass({
-          vuetify,
-          propsData: {
-            serverAddress,
-          }
-        });
-        instance.$mount()
-
-        instance.$on('cancel', () => {
-          resolveFunction({ status: 'cancelled', catalog: null })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        instance.$on('selectCatalog', (catalog) => {
-          resolveFunction({ status: 'success', catalog })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        })
-        document.body.appendChild(instance.$el)
-        return confirmationPromise
       },
-    }
+    })
 
-    Vue.prototype.$openSchemaModal = {
+    register(app, '$openSchemaModal', {
       open() {
-        let resolveFunction = null;
-        const confirmationPromise = new Promise((res) => {
-          resolveFunction = res
+        return new Promise((resolve) => {
+          const mounted = mountModal(app, OpenSchemaModal, {}, {
+            onClose: () => {
+              resolve({ status: 'cancelled', mode: null })
+              closeAndUnmount(mounted)
+            },
+            onOpenFromServer: (serverAddress) => {
+              resolve({ status: 'success', mode: 'server', serverAddress })
+              closeAndUnmount(mounted)
+            },
+            onOpenFromLocal: (schemaFile) => {
+              resolve({ status: 'success', mode: 'local', schemaFile })
+              closeAndUnmount(mounted)
+            },
+          })
         })
-        
-        var ComponentClass = Vue.extend(OpenSchemaModal)
-        var instance = new ComponentClass({
-          vuetify
-        });
-        instance.$mount()
-
-        instance.$on('close', () => {
-          resolveFunction({ status: 'cancelled', mode: null })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        instance.$on('openFromServer', (serverAddress) => {
-          resolveFunction({ status: 'success', mode: 'server', serverAddress })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        })
-        instance.$on('openFromLocal', (schemaFile) => {
-          resolveFunction({ status: 'success', mode: 'local', schemaFile})
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        })
-        
-        document.body.appendChild(instance.$el)
-        return confirmationPromise
       },
-    }
+    })
 
-    Vue.prototype.$deleteConfirmationModal = {
+    register(app, '$deleteConfirmationModal', {
       open() {
-        let resolveFunction = null;
-        const confirmationPromise = new Promise((res) => {
-          resolveFunction = res
+        return new Promise((resolve) => {
+          const mounted = mountModal(app, DeleteConfirmationModal, {}, {
+            onClose: () => {
+              resolve({ confirmed: false })
+              closeAndUnmount(mounted)
+            },
+            onConfirm: () => {
+              resolve({ confirmed: true })
+              closeAndUnmount(mounted)
+            },
+          })
         })
-        
-        var ComponentClass = Vue.extend(DeleteConfirmationModal)
-        var instance = new ComponentClass({
-          vuetify,
-        });
-        instance.$mount()
-
-        instance.$on('close', () => {
-          resolveFunction({ confirmed: false })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        instance.$on('confirm', () => {
-          resolveFunction({ confirmed: true })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        document.body.appendChild(instance.$el)
-
-        return confirmationPromise
       },
-    }
+    })
 
-    Vue.prototype.$serverSelectionModal = {
+    register(app, '$serverSelectionModal', {
       open() {
-        let resolveFunction = null;
-        const confirmationPromise = new Promise((res) => {
-          resolveFunction = res
+        return new Promise((resolve) => {
+          const mounted = mountModal(app, ServerSelectionModal, {}, {
+            onClose: () => {
+              resolve({ status: 'cancelled' })
+              closeAndUnmount(mounted)
+            },
+            onSaveToServer: (serverUrl) => {
+              resolve({ status: 'success', serverUrl })
+              closeAndUnmount(mounted)
+            },
+          })
         })
-        
-        var ComponentClass = Vue.extend(ServerSelectionModal)
-        var instance = new ComponentClass({
-          vuetify,
-        });
-        instance.$mount()
-
-        instance.$on('close', () => {
-          resolveFunction({ status: 'cancelled' })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        instance.$on('saveToServer', (serverUrl) => {
-          resolveFunction({ status: 'success', serverUrl })
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        document.body.appendChild(instance.$el)
-
-        return confirmationPromise
       },
-    }
+    })
 
-    Vue.prototype.$schemaValidationModal = {
+    register(app, '$schemaValidationModal', {
       open(xmlDoc, errorList) {
-        let resolveFunction = null;
-        const confirmationPromise = new Promise((res) => {
-          resolveFunction = res
-        })
-        
-        var ComponentClass = Vue.extend(SchemaValidationModal)
-        var instance = new ComponentClass({
-          vuetify,
-          propsData: {
+        return new Promise((resolve) => {
+          const mounted = mountModal(app, SchemaValidationModal, {
             xmlDoc,
-            errorListProvided: errorList, 
-          }
-        });
-        instance.$mount()
-
-        instance.$on('close', (state) => {
-          resolveFunction(state)
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        document.body.appendChild(instance.$el)
-
-        return confirmationPromise
+            errorListProvided: errorList,
+          }, {
+            onClose: (state) => {
+              resolve(state)
+              closeAndUnmount(mounted)
+            },
+          })
+        })
       },
-    }
+    })
 
-    Vue.prototype.$diagramModal = {
+    register(app, '$diagramModal', {
       open(cube) {
-        var ComponentClass = Vue.extend(DiagramModal)
-        var instance = new ComponentClass({
-          vuetify,
-          propsData: {
-            cube,
-          }
-        });
-        instance.$mount()
-
-        instance.$on('close', () => {
-          instance.close()
-          setTimeout(() => {
-            instance.$destroy()
-          }, 500);
-        });
-        document.body.appendChild(instance.$el)
+        const mounted = mountModal(app, DiagramModal, { cube }, {
+          onClose: () => closeAndUnmount(mounted),
+        })
       },
-    }
+    })
 
-    Vue.prototype.$loadingModal = {
+    register(app, '$loadingModal', {
       open() {
-        var ComponentClass = Vue.extend(LoadingModal)
-        var instance = new ComponentClass({
-          vuetify,
-        });
-        instance.$mount()
-
-        document.body.appendChild(instance.$el)
-        return instance
+        const mounted = mountModal(app, LoadingModal)
+        const close = mounted.instance.close
+        mounted.instance.close = () => {
+          close.call(mounted.instance)
+          mounted.unmount()
+        }
+        return mounted.instance
       },
-    }
+    })
 
-    Vue.prototype.$xmlViewerModal = xmlViewerModal(Vue, vuetify);
-    Vue.prototype.$pasteModal = pasteModal(Vue, vuetify);
-  }
+    register(app, '$xmlViewerModal', {
+      open(element, onSave) {
+        const mounted = mountModal(app, XmlViewerModal, { element }, {
+          onClose: () => closeAndUnmount(mounted),
+          onSaveElement: (xml) => onSave(xml),
+        })
+      },
+    })
+
+    register(app, '$pasteModal', {
+      open() {
+        return new Promise((resolve) => {
+          const mounted = mountModal(app, PasteModal, {}, {
+            onClose: () => {
+              resolve({ status: 'cancelled', xml: null })
+              closeAndUnmount(mounted)
+            },
+            onPaste: (xml) => {
+              resolve({ status: 'success', xml })
+              closeAndUnmount(mounted)
+            },
+          })
+        })
+      },
+    })
+  },
 }
 
 export default Modals

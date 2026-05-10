@@ -1,16 +1,18 @@
-import Vue from 'vue'
+import { createApp } from 'vue'
 import App from './App.vue'
 import vuetify from './plugins/vuetify'
 import titleMixin from './mixins/titleMixin'
 import store from './store'
 import Modals from './plugins/modals'
+import { VListItemContent, VListItemIcon } from './plugins/vuetifyCompat'
 
-Vue.config.productionTip = false
-Vue.mixin(titleMixin)
-Vue.use(Modals)
+const app = createApp(App)
 
-new Vue({
-  vuetify,
-  render: h => h(App),
-  store,
-}).$mount('#app')
+app
+  .component('VListItemContent', VListItemContent)
+  .component('VListItemIcon', VListItemIcon)
+  .mixin(titleMixin)
+  .use(store)
+  .use(vuetify)
+  .use(Modals)
+  .mount('#app')

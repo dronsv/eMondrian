@@ -24,84 +24,84 @@
             cols="12"
           >
             <v-text-field
-              :value="dataSourceName"
+              :model-value="dataSourceName"
               label="DataSource name"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setDataSourceName"
+              @update:model-value="setDataSourceName"
             />
           </v-col>
           <v-col
             cols="12"
           >
             <v-text-field
-              :value="dataSourceDescription"
+              :model-value="dataSourceDescription"
               label="DataSource description"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setDataSourceDescription"
+              @update:model-value="setDataSourceDescription"
             />
           </v-col>
           <v-col
             cols="12"
           >
             <v-text-field
-              :value="url"
+              :model-value="url"
               label="Url"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setUrl"
+              @update:model-value="setUrl"
             />
           </v-col>
           <v-col
             cols="12"
           >
             <v-text-field
-              :value="dataSourceInfo"
+              :model-value="dataSourceInfo"
               label="DataSource info"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setDataSourceInfo"
+              @update:model-value="setDataSourceInfo"
             />
           </v-col>
           <v-col
             cols="12"
           >
             <v-text-field
-              :value="providerName"
+              :model-value="providerName"
               label="Provider name"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setProviderName"
+              @update:model-value="setProviderName"
             />
           </v-col>
           <v-col
             cols="12"
           >
             <v-text-field
-              :value="providerType"
+              :model-value="providerType"
               label="Provider type"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setProviderType"
+              @update:model-value="setProviderType"
             />
           </v-col>
           <v-col
             cols="12"
           >
             <v-text-field
-              :value="authenticationMode"
+              :model-value="authenticationMode"
               label="Authentication mode"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setAuthenticationMode"
+              @update:model-value="setAuthenticationMode"
             />
           </v-col>
         </v-card-text>
@@ -119,13 +119,14 @@ export default {
     },
   },
   data() {
-    const dataSourceName = this.element.querySelector('DataSourceName') ? this.element.querySelector('DataSourceName').innerHTML : '';
-    const dataSourceDescription = this.element.querySelector('DataSourceDescription') ? this.element.querySelector('DataSourceDescription').innerHTML : '';
-    const url = this.element.querySelector('URL') ? this.element.querySelector('URL').innerHTML : '';
-    const dataSourceInfo = this.element.querySelector('DataSourceInfo') ? this.element.querySelector('DataSourceInfo').innerHTML : '';
-    const providerName = this.element.querySelector('ProviderName') ? this.element.querySelector('ProviderName').innerHTML : '';
-    const providerType = this.element.querySelector('ProviderType') ? this.element.querySelector('ProviderType').innerHTML : '';
-    const authenticationMode = this.element.querySelector('AuthenticationMode') ? this.element.querySelector('AuthenticationMode').innerHTML : '';
+    const textFrom = (tagName) => this.element.querySelector(tagName)?.textContent || '';
+    const dataSourceName = textFrom('DataSourceName');
+    const dataSourceDescription = textFrom('DataSourceDescription');
+    const url = textFrom('URL');
+    const dataSourceInfo = textFrom('DataSourceInfo');
+    const providerName = textFrom('ProviderName');
+    const providerType = textFrom('ProviderType');
+    const authenticationMode = textFrom('AuthenticationMode');
 
     return {
       dataSourceName,
@@ -144,13 +145,14 @@ export default {
   },
   methods: {
     setDataSourceName(value) {
+      this.dataSourceName = value
       if (value) {
         let dataSourceName = this.element.querySelector('DataSourceName');
         if (!dataSourceName) {
           dataSourceName = document.createElementNS(null, 'DataSourceName')
           this.element.appendChild(dataSourceName)
         }
-        dataSourceName.innerHTML = value;
+        dataSourceName.textContent = value;
       } else {
         let dataSourceName = this.element.querySelector('DataSourceName');
         if (dataSourceName) this.element.removeChild(dataSourceName)
@@ -158,13 +160,14 @@ export default {
       this.$emit('updateModel');
     },
     setDataSourceDescription(value) {
+      this.dataSourceDescription = value
       if (value) {
         let dataSourceDescription = this.element.querySelector('DataSourceDescription');
         if (!dataSourceDescription) {
           dataSourceDescription = document.createElementNS(null, 'DataSourceDescription')
           this.element.appendChild(dataSourceDescription)
         }
-        dataSourceDescription.innerHTML = value;
+        dataSourceDescription.textContent = value;
       } else {
         let dataSourceDescription = this.element.querySelector('DataSourceDescription');
         if (dataSourceDescription) this.element.removeChild(dataSourceDescription)
@@ -172,13 +175,14 @@ export default {
       this.$emit('updateModel');
     },
     setUrl(value) {
+      this.url = value
       if (value) {
         let url = this.element.querySelector('URL');
         if (!url) {
           url = document.createElementNS(null, 'URL')
           this.element.appendChild(url)
         }
-        url.innerHTML = value;
+        url.textContent = value;
       } else {
         let url = this.element.querySelector('URL');
         if (url) this.element.removeChild(url)
@@ -186,22 +190,24 @@ export default {
       this.$emit('updateModel');
     },
     setDataSourceInfo(value) {
+      this.dataSourceInfo = value
       let dataSourceInfo = this.element.querySelector('DataSourceInfo');
       if (!dataSourceInfo) {
         dataSourceInfo = document.createElementNS(null, 'DataSourceInfo')
         this.element.appendChild(dataSourceInfo)
       }
-      dataSourceInfo.innerHTML = value || '';
+      dataSourceInfo.textContent = value || '';
       this.$emit('updateModel');
     },
     setProviderName(value) {
+      this.providerName = value
       if (value) {
         let providerName = this.element.querySelector('ProviderName');
         if (!providerName) {
           providerName = document.createElementNS(null, 'ProviderName')
           this.element.appendChild(providerName)
         }
-        providerName.innerHTML = value;
+        providerName.textContent = value;
       } else {
         let providerName = this.element.querySelector('ProviderName');
         if (providerName) this.element.removeChild(providerName)
@@ -209,13 +215,14 @@ export default {
       this.$emit('updateModel');
     },
     setProviderType(value) {
+      this.providerType = value
       if (value) {
         let providerType = this.element.querySelector('ProviderType');
         if (!providerType) {
           providerType = document.createElementNS(null, 'ProviderType')
           this.element.appendChild(providerType)
         }
-        providerType.innerHTML = value;
+        providerType.textContent = value;
       } else {
         let providerType = this.element.querySelector('ProviderType');
         if (providerType) this.element.removeChild(providerType)
@@ -223,13 +230,14 @@ export default {
       this.$emit('updateModel');
     },
     setAuthenticationMode(value) {
+      this.authenticationMode = value
       if (value) {
         let authenticationMode = this.element.querySelector('AuthenticationMode');
         if (!authenticationMode) {
           authenticationMode = document.createElementNS(null, 'AuthenticationMode')
           this.element.appendChild(authenticationMode)
         }
-        authenticationMode.innerHTML = value;
+        authenticationMode.textContent = value;
       } else {
         let authenticationMode = this.element.querySelector('AuthenticationMode');
         if (authenticationMode) this.element.removeChild(authenticationMode)

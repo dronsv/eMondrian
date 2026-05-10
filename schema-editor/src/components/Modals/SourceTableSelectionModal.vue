@@ -1,11 +1,11 @@
 <template>
   <v-dialog
-    v-model="opened"
+    :model-value="opened"
     persistent
     width="1000"
   >
     <v-card>
-      <v-card-title class="text-h5 primary lighten-1 white--text">
+      <v-card-title class="text-h5 bg-primary text-white">
         Select source table
       </v-card-title>
       <v-card-text class="pt-5">
@@ -14,10 +14,10 @@
           :items="rows"
           :items-per-page="10"
           :search="search"
-          :item-class="getItemClass"
+          :row-props="getRowProps"
           :loading="rowsLoading"
           class="elevation-1"
-          dense
+          density="compact"
         >
           <template v-slot:top>
             <v-text-field
@@ -29,7 +29,7 @@
           <template v-slot:item.actions="{ item }">
             <v-btn
               class="ma-2"
-              @click="selectItem(item)"
+              @click="selectItem(item.raw || item)"
             >
               Select
             </v-btn>
@@ -40,7 +40,7 @@
         <v-spacer></v-spacer>
         <v-btn
           color="primary"
-          text
+          variant="text"
           @click="$emit('close')"
         >
           Close
@@ -70,29 +70,29 @@ export default {
       search: '',
       headers: [
         {
-          text: 'Catalog',
+          title: 'Catalog',
           align: 'start',
-          value: 'tableCatalog',
+          key: 'tableCatalog',
           width: '15%',
         },
         {
-          text: 'Schema',
-          value: 'tableSchema',
+          title: 'Schema',
+          key: 'tableSchema',
           width: '15%',
         },
         {
-          text: 'Name',
-          value: 'tableName',
+          title: 'Name',
+          key: 'tableName',
           width: '40%',
         },
         {
-          text: 'Type',
-          value: 'tableType',
+          title: 'Type',
+          key: 'tableType',
           width: '20%'
         },
         {
-          text: 'Actions',
-          value: 'actions',
+          title: 'Actions',
+          key: 'actions',
           sortable: false,
           width: '20%',
           align: 'start',
@@ -102,38 +102,42 @@ export default {
     }
   },
   watch: {
-    async opened() {
+    async opened(isOpen) {
+      if (!isOpen) return
+
       this.rowsLoading = true
       try {
-        const serverAddress = this.$root.$children[0].serverUrl;
-        const responce = await fetchTableList(serverAddress)
+        const serverAddress = this.$store.getters['SchemaEditor/serverUrl'];
+        const response = await fetchTableList(serverAddress)
 
-        const isErrorResponce = responce.querySelector('Fault')
-        if (isErrorResponce) {
-          const error = isErrorResponce.querySelector('detail > Error')
+        const errorResponse = response.querySelector('Fault')
+        if (errorResponse) {
+          const error = errorResponse.querySelector('detail > Error')
           const errorMessage = error.getAttribute('Description')
           const errorCode = error.getAttribute('ErrorCode')
-          throw new Error(`<b class="text-h6">Server returned error responce</b><br><b>Error code:</b> ${errorCode}<br><b>Error message:</b> ${errorMessage}`)
+          throw new Error(`<b class="text-h6">Server returned error response</b><br><b>Error code:</b> ${errorCode}<br><b>Error message:</b> ${errorMessage}`)
         }
 
-        const rows = Array.from(responce.querySelectorAll('row'))
+        const rows = Array.from(response.querySelectorAll('row'))
         const parsedRows = rows.map((e) => {
+          const textFrom = (tagName) => e.querySelector(tagName)?.textContent || ''
           return {
-            tableCatalog: e.querySelector('TABLE_CATALOG').innerHTML,
-            tableSchema: e.querySelector('TABLE_SCHEMA').innerHTML,
-            tableName: e.querySelector('TABLE_NAME').innerHTML,
-            tableType: e.querySelector('TABLE_TYPE').innerHTML,
+            tableCatalog: textFrom('TABLE_CATALOG'),
+            tableSchema: textFrom('TABLE_SCHEMA'),
+            tableName: textFrom('TABLE_NAME'),
+            tableType: textFrom('TABLE_TYPE'),
           }
         })
         this.rows = parsedRows
-        this.rowsLoading = false
       } catch (e) {
         this.$emit('close')
         if (e.message) {
-          this.$root.$emit('errorMessage', e.message)
+          this.$errorModal.open(e.message)
         } else {
-          this.$root.$emit('errorMessage', '<b class="text-h6">Unable to load table list from the provided server</b>')
+          this.$errorModal.open('<b class="text-h6">Unable to load table list from the provided server</b>')
         }
+      } finally {
+        this.rowsLoading = false
       }
     },
   },
@@ -142,11 +146,11 @@ export default {
       this.$emit('selectItem', item)
       this.$emit('close')
     },
-    getItemClass(item) {
+    getRowProps({ item }) {
       if (item.tableName === this.selectedAttributeValue) {
-        return 'green lighten-4'
+        return { class: 'bg-green-lighten-4' }
       }
-      return ''
+      return {}
     }
   }
 }

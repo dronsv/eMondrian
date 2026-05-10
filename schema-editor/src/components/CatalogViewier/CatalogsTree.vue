@@ -1,9 +1,6 @@
 <template>
-  <v-list dense nav v-if="datasourceList">
-    <v-list-item-group
-      ref="listItems"
-      color="primary"
-    >
+  <v-list density="compact" nav v-if="datasourceList">
+    <div ref="listItems">
       <v-row class="align-center black--text py-1">
         <v-col cols=10 class="capitalize">
           DataSources
@@ -12,11 +9,10 @@
             <v-tooltip
               bottom
             >
-              <template v-slot:activator="{ on, attrs }">
+              <template v-slot:activator="{ props }">
                 <v-btn
                   icon
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   @click="addNewItem"
                 >
                   <v-icon>mdi-plus</v-icon>
@@ -37,7 +33,7 @@
         @updateModel="$emit('updateModel')"
         @removeItem="$emit('removeItem', $event)"
       />
-    </v-list-item-group>
+    </div>
   </v-list>
 </template>
 
@@ -78,18 +74,13 @@ export default {
       this.$emit('updateModel');
     },
     async updateEditorState(currentItem) {
-      if (currentItem !== null) {
-        const listItems = this.$refs.listItems.items.map(i => i.$parent.element)
-        const index = listItems.indexOf(currentItem)
-        await this.$nextTick();
-        this.$refs.listItems.internalLazyValue = index
-
-        const listItemElement = this.$refs.listItems.items[index].$el;
-        listItemElement.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-      }
-      else {
-        this.$refs.listItems.internalLazyValue = null
-      }
+      if (currentItem === null) return
+      await this.$nextTick();
+      this.$refs.listItems?.querySelector('.v-list-item')?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+        behavior: "smooth"
+      });
     }
   }
 }

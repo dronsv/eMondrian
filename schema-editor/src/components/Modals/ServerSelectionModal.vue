@@ -40,7 +40,7 @@
 export default {
   data() {
     return {
-      serverAddress: process.env.NODE_ENV === "production" ? "../xmla" : 'https://ssemenkoff.dev/emondrian/xmla',
+      serverAddress: import.meta.env.PROD ? "../xmla" : 'https://ssemenkoff.dev/emondrian/xmla',
       opened: true,
     }
   },

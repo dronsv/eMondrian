@@ -38,9 +38,9 @@
               <v-card-text>
                 <template
                   v-for="attribute in requiredAttributes"
+                  :key="attribute.name"
                 >
                   <v-col
-                    :key="attribute.name"
                     cols="12"
                   >
                     <template v-if="attribute.linkedToSourceTable && serverAvailable">
@@ -48,14 +48,14 @@
                         <v-col align-self="center" cols="11">
                           <v-text-field
                             :label="attribute.name"
-                            :value="configuredElement[attribute.name]"
-                            @change="onTableManuallyChanged(attribute, $event)"
+                            :model-value="configuredElement[attribute.name]"
+                            @update:model-value="onTableManuallyChanged(attribute, $event)"
                           ></v-text-field>
                         </v-col>
                         <v-col align-self="center" cols="1">
                           <v-btn
                             icon
-                            small
+                            size="small"
                             @click="openSourceTableSelection(attribute)"
                           >
                             <v-icon
@@ -69,13 +69,13 @@
                       v-else
                       :ref="`editorField-${attribute.name}`"
                       :is="getComponentForAttribute(attribute)"
-                      :value="configuredElement[attribute.name]"
+                      :model-value="configuredElement[attribute.name]"
                       :label="attribute.name"
                       :items="getSelectionItems(attribute)"
                       :rules="rules.required"
-                      dense
+                      density="compact"
                       clearable
-                      @change="updateXmlAttribute(attribute.name, $event)"
+                      @update:model-value="updateXmlAttribute(attribute.name, $event)"
                     ></component>
                     <p class="mt-n2 text-caption" v-html="attribute.doc"></p>
                   </v-col>
@@ -90,20 +90,20 @@
               <v-card-text>
                 <template
                   v-for="attribute in optionalAttributes"
+                  :key="attribute.name"
                 >
                   <v-col
-                    :key="attribute.name"
                     cols="12"
                   >
                     <component
                       :ref="`editorField-${attribute.name}`"
                       :is="getComponentForAttribute(attribute)"
-                      :value="configuredElement[attribute.name]"
+                      :model-value="configuredElement[attribute.name]"
                       :label="attribute.name"
                       :items="getSelectionItems(attribute)"
-                      dense
+                      density="compact"
                       clearable
-                      @change="updateXmlAttribute(attribute.name, $event)"
+                      @update:model-value="updateXmlAttribute(attribute.name, $event)"
                     ></component>
                     <p class="mt-n2 text-caption" v-html="attribute.doc"></p>
                   </v-col>
@@ -122,7 +122,7 @@
                 ref="textArea"
                 v-model="configuredElement._value"
                 label="Value of the element"
-                @change="updateXmlValue"
+                @update:model-value="updateXmlValue"
                 @focus="expandTextArea"
                 @input="expandTextArea"
                 @blur="shrinkTextArea"
@@ -144,7 +144,7 @@
 <script>
 import _ from "lodash"
 import xmlDescriptionMixin from '../mixins/xmlDescriptionMixin'
-import { VTextField, VCombobox } from 'vuetify/lib'
+import { VCombobox, VTextField } from 'vuetify/components'
 import { getElementByXpathRelative } from '../utils/xPath'
 import RadioGroupEditor from "./Editors/RadioGroupEditor.vue"
 import OptionalBooleanEditor from "./Editors/OptionalBooleanEditor.vue"
@@ -243,6 +243,7 @@ export default {
   },
   methods: {
     updateXmlAttribute(attributeName, attributeValue) {
+      this.configuredElement[attributeName] = attributeValue
       const attr = this.elementDesc.attributes.find(e => e.name === attributeName)
       if (attr.type === 'Boolean' && attributeValue === 'none') {
         this.element.removeAttribute(attributeName)

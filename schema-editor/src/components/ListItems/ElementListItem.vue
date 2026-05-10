@@ -11,11 +11,10 @@
         <v-list-item-title v-text="name"></v-list-item-title>
       </v-list-item-content>
       <v-tooltip bottom v-if="movable">
-        <template v-slot:activator="{ on, attrs }">
+        <template v-slot:activator="{ props }">
           <v-btn
             icon
-            v-bind="attrs"
-            v-on="on"
+            v-bind="props"
             :disabled="isFirst"
             @click.stop.prevent="$emit('moveUp')"
           >
@@ -27,11 +26,10 @@
         <span>Move up</span>
       </v-tooltip>
       <v-tooltip bottom v-if="movable">
-        <template v-slot:activator="{ on, attrs }">
+        <template v-slot:activator="{ props }">
           <v-btn
             icon
-            v-bind="attrs"
-            v-on="on"
+            v-bind="props"
             :disabled="isLast"
             @click.stop.prevent="$emit('moveDown')"
           >
@@ -43,11 +41,10 @@
         <span>Move down</span>
       </v-tooltip>
       <v-tooltip bottom>
-        <template v-slot:activator="{ on, attrs }">
+        <template v-slot:activator="{ props }">
           <v-btn
             icon
-            v-bind="attrs"
-            v-on="on"
+            v-bind="props"
             @click.stop.prevent="copyItem"
           >
             <v-icon
@@ -58,11 +55,10 @@
         <span>Copy</span>
       </v-tooltip>
       <v-tooltip bottom>
-        <template v-slot:activator="{ on, attrs }">
+        <template v-slot:activator="{ props }">
           <v-btn
             icon
-            v-bind="attrs"
-            v-on="on"
+            v-bind="props"
             @click.stop.prevent="duplicateItem"
           >
             <v-icon
@@ -73,11 +69,10 @@
         <span>Duplicate</span>
       </v-tooltip>
       <v-tooltip bottom>
-        <template v-slot:activator="{ on, attrs }">
+        <template v-slot:activator="{ props }">
           <v-btn
             icon
-            v-bind="attrs"
-            v-on="on"
+            v-bind="props"
             @click.stop.prevent="deleteItem"
           >
             <v-icon
@@ -89,11 +84,10 @@
         <span>Delete</span>
       </v-tooltip>
       <v-tooltip bottom>
-        <template v-slot:activator="{ on, attrs }">
+        <template v-slot:activator="{ props }">
           <v-btn
             icon
-            v-bind="attrs"
-            v-on="on"
+            v-bind="props"
             @click.stop.prevent="opened=!opened"
           >
             <v-icon
@@ -132,13 +126,14 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 import xmlDescriptionMixin from '../../mixins/xmlDescriptionMixin'
 
 export default {
   name: 'ElementListItem',
   components: {
-    ElementChildArray: () => import('./ElementChildArray.vue'),
-    ElementChildObject: () => import('./ElementChildObject.vue')
+    ElementChildArray: defineAsyncComponent(() => import('./ElementChildArray.vue')),
+    ElementChildObject: defineAsyncComponent(() => import('./ElementChildObject.vue'))
   },
   mixins: [
     xmlDescriptionMixin

@@ -12,11 +12,10 @@
          <v-tooltip
             bottom
           >
-            <template v-slot:activator="{ on, attrs }">
+            <template v-slot:activator="{ props }">
               <v-btn
                 icon
-                v-bind="attrs"
-                v-on="on"
+                v-bind="props"
                 @click="pasteItem"
               >
                 <v-icon>mdi-content-paste</v-icon>
@@ -29,11 +28,10 @@
         <v-tooltip
           bottom
         >
-          <template v-slot:activator="{ on, attrs }">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               @click="openNewItemModal"
             >
               <v-icon>mdi-plus</v-icon>
@@ -43,20 +41,24 @@
         </v-tooltip>
       </v-col>
     </v-row>
-    <draggable v-model="arrayItems" @end="dragEnd">
-      <element-list-item
-        v-for="(item, idx) in arrayItems" 
-        class="child_item"
-        :key="`${arrayDescription.type}-${getElementName(item)}-${idx}`"
-        :element="item"
-        :timestamp="timestamp"
-        movable
-        :isFirst="idx === 0"
-        :isLast="idx === arrayItems.length - 1"
-        @moveUp="moveUp(item, arrayItems[idx - 1])"
-        @moveDown="moveDown(item, arrayItems[idx + 1])"
-        @open-editor="openChildElement"
-      />
+    <draggable
+      v-model="arrayItems"
+      :item-key="getDraggableKey"
+      @end="dragEnd"
+    >
+      <template #item="{ element: item, index: idx }">
+        <element-list-item
+          class="child_item"
+          :element="item"
+          :timestamp="timestamp"
+          movable
+          :isFirst="idx === 0"
+          :isLast="idx === arrayItems.length - 1"
+          @moveUp="moveUp(item, arrayItems[idx - 1])"
+          @moveDown="moveDown(item, arrayItems[idx + 1])"
+          @open-editor="openChildElement"
+        />
+      </template>
     </draggable>
     <v-dialog
       v-model="dialogOpened"
@@ -93,12 +95,13 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 import xmlDescriptionMixin from '../../mixins/xmlDescriptionMixin'
 import draggable from 'vuedraggable'
 
 export default {
   components: { 
-    ElementListItem: () => import('./ElementListItem.vue'),
+    ElementListItem: defineAsyncComponent(() => import('./ElementListItem.vue')),
     draggable,
   },
   name: 'ElementChildArray',
@@ -155,6 +158,10 @@ export default {
     },
     getElementName(element) {
       return element.getAttribute('name')
+    },
+    getDraggableKey(element) {
+      const index = Array.from(element.parentNode?.children || []).indexOf(element)
+      return `${element.tagName}-${this.getElementName(element) || 'unnamed'}-${index}`
     },
     openChildElement(payload) {
       if (!payload.parentDescription) {

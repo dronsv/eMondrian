@@ -1,6 +1,6 @@
 <template>
   <v-dialog
-    v-model="opened"
+    :model-value="opened"
     persistent
     fullscreen
   >
@@ -117,9 +117,9 @@ export default {
       this.xmlDoc = parser.parseFromString(databasesSchema.wholeText, "text/xml")
     } catch (e) {
       if (e.message) {
-        this.$root.$emit('errorMessage', e.message)
+        this.$errorModal.open(e.message)
       } else {
-        this.$root.$emit('errorMessage', '<b class="text-h6">Unable to load schema from the provided server</b>')
+        this.$errorModal.open('<b class="text-h6">Unable to load schema from the provided server</b>')
       }
     }
   },
@@ -142,7 +142,7 @@ export default {
     async saveDatasources() {
       const validationResult = this.validateDatabaseXml(this.xmlDoc);
       if (!validationResult) {
-        this.$root.$emit('errorMessage', 'Could not save DataSource. Configured data is not valid.');
+        this.$errorModal.open('<b class="text-h6">Could not save DataSource. Configured data is not valid.</b>')
         return;
       }
 
@@ -178,9 +178,9 @@ export default {
         }
       } catch (e) {
         if (e.message) {
-          this.$root.$emit('errorMessage', e.message)
+          this.$errorModal.open(e.message)
         } else {
-          this.$root.$emit('errorMessage', '<b class="text-h6">Unable to save database to the provided server</b>')
+          this.$errorModal.open('<b class="text-h6">Unable to save database to the provided server</b>')
         }
       }
     },

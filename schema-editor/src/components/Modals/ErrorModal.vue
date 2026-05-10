@@ -9,7 +9,7 @@
         Error occured
       </v-card-title>
       <v-card-text>
-        <p class="pt-6" v-html="message">
+        <p class="pt-6" v-html="safeMessage">
         </p>
       </v-card-text>
       <v-card-actions>
@@ -27,6 +27,8 @@
 </template>
 
 <script>
+import { safeModalHtml } from '../../utils/safeModalHtml'
+
 export default {
   data() {
     return {
@@ -37,6 +39,11 @@ export default {
     message: {
       type: String,
       default: 'Something went wrong'
+    },
+  },
+  computed: {
+    safeMessage() {
+      return safeModalHtml(this.message)
     },
   },
   methods: {

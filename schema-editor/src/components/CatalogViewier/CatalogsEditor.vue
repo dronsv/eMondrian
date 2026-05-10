@@ -24,35 +24,35 @@
             cols="12"
           >
             <v-text-field
-              :value="name"
+              :model-value="name"
               label="Name"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setName"
+              @update:model-value="setName"
             />
           </v-col>
           <v-col
             cols="12"
           >
             <v-text-field
-              :value="definition"
+              :model-value="definition"
               label="Definition file"
               :rules="rules.required"
-              dense
+              density="compact"
               clearable
-              @change="setDefinition"
+              @update:model-value="setDefinition"
             />
           </v-col>
           <v-col
             cols="12"
           >
             <v-text-field
-              :value="dataSourceInfo"
+              :model-value="dataSourceInfo"
               label="Data source info"
-              dense
+              density="compact"
               clearable
-              @change="setDataSourceInfo"
+              @update:model-value="setDataSourceInfo"
             />
           </v-col>
         </v-card-text>
@@ -71,12 +71,12 @@ export default {
   },
   data() {
     const definitionEl = this.element.querySelector('Definition');
-    const definition = definitionEl ? definitionEl.innerHTML : '';
+    const definition = definitionEl ? definitionEl.textContent : '';
 
     const name = this.element.getAttributeNS(null, 'name') || '';
 
     const dataSourceInfoEl = this.element.querySelector('DataSourceInfo');
-    const dataSourceInfo = dataSourceInfoEl ? dataSourceInfoEl.innerHTML : '';
+    const dataSourceInfo = dataSourceInfoEl ? dataSourceInfoEl.textContent : '';
 
     return {
       definition,
@@ -92,13 +92,14 @@ export default {
   },
   methods: {
     setDefinition(value) {
+      this.definition = value
       if (value) {
         let definitionEl = this.element.querySelector('Definition');
         if (!definitionEl) {
           definitionEl = document.createElementNS(null, 'Definition')
           this.element.insertAdjacentElement('beforeend', definitionEl)
         }
-        definitionEl.innerHTML = value;
+        definitionEl.textContent = value;
       } else {
         let definitionEl = this.element.querySelector('Definition');
         if (definitionEl) this.element.removeChild(definitionEl)
@@ -106,6 +107,7 @@ export default {
       this.$emit('updateModel');
     },
     setName(value) {
+      this.name = value
       if (value) {
         this.element.setAttributeNS(null, 'name', value)
       } else {
@@ -114,13 +116,14 @@ export default {
       this.$emit('updateModel');
     },
     setDataSourceInfo(value) {
+      this.dataSourceInfo = value
       if (value) {
         let dataSourceInfoEl = this.element.querySelector('DataSourceInfo');
         if (!dataSourceInfoEl) {
           dataSourceInfoEl = document.createElementNS(null, 'DataSourceInfo')
           this.element.insertAdjacentElement('afterbegin', dataSourceInfoEl)
         }
-        dataSourceInfoEl.innerHTML = value;
+        dataSourceInfoEl.textContent = value;
       } else {
         let dataSourceInfoEl = this.element.querySelector('DataSourceInfo');
         if (dataSourceInfoEl) this.element.removeChild(dataSourceInfoEl)

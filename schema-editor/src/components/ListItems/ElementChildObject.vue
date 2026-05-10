@@ -19,12 +19,11 @@
             v-if="!obj.element"
             bottom
           >
-            <template v-slot:activator="{ on, attrs }">
+            <template v-slot:activator="{ props }">
               <v-btn
                 icon
-                small
-                v-bind="attrs"
-                v-on="on"
+                size="small"
+                v-bind="props"
                 @click.stop.prevent="dialogOpened = true"
               >
                 <v-icon
@@ -38,11 +37,10 @@
             <v-tooltip
               bottom
             >
-              <template v-slot:activator="{ on, attrs }">
+              <template v-slot:activator="{ props }">
                 <v-btn
                   icon
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   @click.stop.prevent="deleteItem"
                 >
                   <v-icon
@@ -57,12 +55,11 @@
                 v-if="hasArrays || hasChildObjects"
                 bottom
               >
-              <template v-slot:activator="{ on, attrs }">
+              <template v-slot:activator="{ props }">
                 <v-btn
                   icon
-                  small
-                  v-bind="attrs"
-                  v-on="on"
+                  size="small"
+                  v-bind="props"
                   @click.stop.prevent="opened=!opened"
                 >
                   <v-icon
@@ -134,12 +131,13 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 import xmlDescriptionMixin from '../../mixins/xmlDescriptionMixin'
 
 export default {
   name: 'ElementChildObject',
   components: {
-    ElementChildArray: () => import('./ElementChildArray.vue')
+    ElementChildArray: defineAsyncComponent(() => import('./ElementChildArray.vue'))
   },
   mixins: [
     xmlDescriptionMixin

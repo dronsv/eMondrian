@@ -10,11 +10,10 @@
         <v-list-item-title v-text="name"></v-list-item-title>
       </v-list-item-content>
         <!-- <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               @click.stop.prevent="copyItem"
             >
               <v-icon
@@ -26,11 +25,10 @@
         </v-tooltip> -->
 
         <!-- <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               @click.stop.prevent="duplicateItem"
             >
               <v-icon
@@ -42,11 +40,10 @@
         </v-tooltip> -->
 
         <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
+          <template v-slot:activator="{ props }">
             <v-btn
               icon
-              v-bind="attrs"
-              v-on="on"
+              v-bind="props"
               @click.stop.prevent="deleteItem"
             >
               <v-icon
@@ -58,11 +55,10 @@
           <span>Delete</span>
         </v-tooltip>
       <v-tooltip bottom>
-        <template v-slot:activator="{ on, attrs }">
+        <template v-slot:activator="{ props }">
           <v-btn
             icon
-            v-bind="attrs"
-            v-on="on"
+            v-bind="props"
             @click.stop.prevent="opened=!opened"
           >
             <v-icon
@@ -90,11 +86,10 @@
             <v-tooltip
               bottom
             >
-              <template v-slot:activator="{ on, attrs }">
+              <template v-slot:activator="{ props }">
                 <v-btn
                   icon
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   @click="pasteItem"
                 >
                   <v-icon>mdi-content-paste</v-icon>
@@ -107,11 +102,10 @@
             <v-tooltip
               bottom
             >
-              <template v-slot:activator="{ on, attrs }">
+              <template v-slot:activator="{ props }">
                 <v-btn
                   icon
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   @click="addNewItem"
                 >
                   <v-icon>mdi-plus</v-icon>
@@ -121,16 +115,20 @@
             </v-tooltip>
           </v-col>
         </v-row>
-        <draggable v-model="catalogs" @end="dragEnd">
-          <catalog-list-item
-            v-for="(i, idx) in catalogs" 
-            :key="idx"
-            :element="i"
-            :timestamp="timestamp"
-            :key-prop="`Catalog_${idx}__${keyProp}`"
-            @openItem="$emit('openItem', $event)"
-            @removeItem="$emit('removeItem', $event)"
-          />
+        <draggable
+          v-model="catalogs"
+          :item-key="getDraggableKey"
+          @end="dragEnd"
+        >
+          <template #item="{ element: item, index: idx }">
+            <catalog-list-item
+              :element="item"
+              :timestamp="timestamp"
+              :key-prop="`Catalog_${idx}__${keyProp}`"
+              @openItem="$emit('openItem', $event)"
+              @removeItem="$emit('removeItem', $event)"
+            />
+          </template>
         </draggable>
       </div>
     </div>
@@ -209,6 +207,10 @@ export default {
     },
     openItem() {
       this.$emit('openItem',  { element: this.element, key: this.keyProp })
+    },
+    getDraggableKey(element) {
+      const index = Array.from(element.parentNode?.children || []).indexOf(element)
+      return `${element.tagName}-${element.getAttribute('name') || 'unnamed'}-${index}`
     },
     deleteItem() {
       this.$emit('removeItem', this.element)

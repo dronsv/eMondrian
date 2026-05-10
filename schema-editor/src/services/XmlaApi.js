@@ -1,9 +1,9 @@
-import DiscoverCatalogs from './XmlRequests/DiscoverCatalogs.xml'
-import DiscoverMetadata from './XmlRequests/DiscoverSchema.xml'
-import SaveMetadata from './XmlRequests/SaveSchema.xml'
-import DiscoverDatabases from './XmlRequests/DiscoverDatabases.xml'
-import SaveDatabase from './XmlRequests/SaveDatabase.xml'
-import DiscoverSourceTables from './XmlRequests/DiscoverSourceTables.xml'
+import DiscoverCatalogs from './XmlRequests/DiscoverCatalogs.xml?raw'
+import DiscoverMetadata from './XmlRequests/DiscoverSchema.xml?raw'
+import SaveMetadata from './XmlRequests/SaveSchema.xml?raw'
+import DiscoverDatabases from './XmlRequests/DiscoverDatabases.xml?raw'
+import SaveDatabase from './XmlRequests/SaveDatabase.xml?raw'
+import DiscoverSourceTables from './XmlRequests/DiscoverSourceTables.xml?raw'
 
 export function fetchCatalogList(url) {
   let resFn, rejFn
