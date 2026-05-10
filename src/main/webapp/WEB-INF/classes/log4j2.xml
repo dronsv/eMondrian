@@ -6,12 +6,13 @@
                 <TimeBasedTriggeringPolicy/>
                 <SizeBasedTriggeringPolicy size="10 MB"/>
             </Policies>
-            <DefaultRolloverStrategy max="10"/>
-            <DirectWriteRolloverStrategy>
-                <Delete basePath="${sys:catalina.home}/logs">
-                    <IfLastModified age="P15D"/>
+            <DefaultRolloverStrategy max="10">
+                <Delete basePath="${sys:catalina.home}/logs" maxDepth="1">
+                    <IfFileName glob="mondrian*">
+                        <IfLastModified age="P15D"/>
+                    </IfFileName>
                 </Delete>
-            </DirectWriteRolloverStrategy>
+            </DefaultRolloverStrategy>
         </RollingRandomAccessFile>
         <RollingRandomAccessFile name="MDXLOG" fileName="${sys:catalina.home}/logs/mondrian-mdx.log" append="true" filePattern="${sys:catalina.home}/logs/mondrian-mdx-%d{MM-dd-yyyy}-%i.log">
             <PatternLayout pattern="%d %-5p [%c] %m%n"/>
