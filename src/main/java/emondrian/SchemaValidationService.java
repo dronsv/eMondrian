@@ -330,7 +330,10 @@ public class SchemaValidationService {
                             msg(locale, "dependson.missing.property.recommendation", propertyName)
                         );
                     } else if (!dependsOnLevelValue.booleanValue()) {
-                        result.addFatal(
+                        // Warn, not fatal: dependsOnLevelValue=false still works
+                        // for chain ordering, and avoids multi-column level
+                        // blocking agg table routing in SqlTupleReader.
+                        result.addWarn(
                             "DEPENDS_ON_PROPERTY_FLAG_MISSING",
                             msg(locale, "dependson.property.flag.missing.message", propertyName),
                             schemaName,
