@@ -10,3 +10,5 @@ src/SchemaEditor
 .idea
 website
 *.json
+!schema-editor/package.json
+!schema-editor/package-lock.json

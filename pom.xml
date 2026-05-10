@@ -24,6 +24,7 @@
          with known npm audit findings. Use -Dskip.schema.editor=false only
          for explicit local/admin UI builds. -->
     <skip.schema.editor>true</skip.schema.editor>
+    <schema.editor.dir>${project.basedir}/schema-editor</schema.editor.dir>
   </properties>
 
   <dependencies>
@@ -107,7 +108,9 @@
             </goals>
             <configuration>
               <target>
-                <mkdir dir="${project.basedir}/src/SchemaEditor/dist"/>
+                <delete dir="${schema.editor.dir}/dist"/>
+                <delete dir="${project.build.directory}/${project.build.finalName}/schema_editor"/>
+                <mkdir dir="${schema.editor.dir}/dist"/>
               </target>
             </configuration>
           </execution>
@@ -130,13 +133,13 @@
                 </configuration>
             </execution>
             <execution>
-                <id>npm install</id>
+                <id>npm ci</id>
                 <goals>
                     <goal>npm</goal>
                 </goals>
                 <phase>generate-resources</phase>
                 <configuration>
-                    <arguments>install</arguments>
+                    <arguments>ci</arguments>
                 </configuration>
             </execution>
             <execution>
@@ -152,7 +155,7 @@
         </executions>
         <configuration>
             <nodeVersion>${node.version}</nodeVersion>
-            <workingDirectory>src/SchemaEditor</workingDirectory>
+            <workingDirectory>${schema.editor.dir}</workingDirectory>
             <skip>${skip.schema.editor}</skip>
         </configuration>
       </plugin>
@@ -164,7 +167,7 @@
         <configuration>
           <webResources>
             <resource>
-              <directory>src/SchemaEditor/dist</directory>
+              <directory>${schema.editor.dir}/dist</directory>
               <targetPath>schema_editor</targetPath>
             </resource>
           </webResources>
