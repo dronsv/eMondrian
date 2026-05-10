@@ -36,38 +36,44 @@
 </template>
 
 <script>
-import * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution'
 
 export default {
-  mounted() {
+  async mounted() {
     const serializer = new XMLSerializer
     const xmlContent = serializer.serializeToString(this.element)
     this.xmlContent = xmlContent
     this.lastSavedElement = xmlContent
-    document.querySelector('html').style="overflow: hidden";
+    document.documentElement.style.overflow = 'hidden'
 
-    const cardContent = this.$refs.cardContent;
-    const el = this.$refs.editor;
+    await this.$nextTick()
 
-    el.style.width = `${cardContent.clientWidth}px`;
-    el.style.height = `${cardContent.clientHeight}px`;
-    el.style.overflow = `hidden`;
-    cardContent.style.overflow = `hidden`;
+    const cardContent = this.$refs.cardContent?.$el || this.$refs.cardContent
+    const el = this.$refs.editor
+
+    if (!cardContent || !el) return
+
+    el.style.width = `${cardContent.clientWidth || window.innerWidth}px`
+    el.style.height = `${cardContent.clientHeight || window.innerHeight}px`
+    el.style.overflow = 'hidden'
+    cardContent.style.overflow = 'hidden'
 
     this.editor = monaco.editor.create(el, {
       value: this.xmlContent,
       language: 'xml',
-    });
+    })
   },
   unmounted() {
     this.editor?.dispose()
-    document.querySelector('html').style="";
+    document.documentElement.style.overflow = ''
   },
   data() {
     return {
       opened: true,
       xmlContent: '',
       lastSavedElement: '',
+      editor: null,
     }
   },
   props: {
@@ -81,6 +87,7 @@ export default {
       this.opened = false
     },
     async save() {
+      if (!this.editor) return
       this.xmlContent = this.editor.getModel().getValue();
 
       this.lastSavedElement = this.xmlContent
@@ -93,6 +100,7 @@ export default {
       }
     },
     async checkChanges() {
+      if (!this.editor) return { confirmed: true }
       this.xmlContent = this.editor.getModel().getValue();
 
       return this.lastSavedElement !== this.xmlContent

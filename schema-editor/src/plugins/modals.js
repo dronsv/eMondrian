@@ -10,7 +10,6 @@ import DeleteConfirmationModal from '../components/Modals/DeleteConfirmationModa
 import ServerSelectionModal from '../components/Modals/ServerSelectionModal.vue'
 import SchemaValidationModal from '../components/Modals/SchemaValidationModal.vue'
 import DiagramModal from '../components/Modals/DiagramModal.vue'
-import XmlViewerModal from '../components/Modals/XmlViewerModal/XmlViewerModal.vue'
 import PasteModal from '../components/Modals/PasteModal/PasteModal.vue'
 import LoadingModal from '../components/Modals/LoadingModal.vue'
 
@@ -47,6 +46,11 @@ function closeAndUnmount(mounted) {
 
 function register(rootApp, name, api) {
   rootApp.config.globalProperties[name] = api
+}
+
+async function loadXmlViewerModal() {
+  const module = await import('../components/Modals/XmlViewerModal/XmlViewerModal.vue')
+  return module.default
 }
 
 const Modals = {
@@ -193,7 +197,8 @@ const Modals = {
     })
 
     register(app, '$xmlViewerModal', {
-      open(element, onSave) {
+      async open(element, onSave) {
+        const XmlViewerModal = await loadXmlViewerModal()
         const mounted = mountModal(app, XmlViewerModal, { element }, {
           onClose: () => closeAndUnmount(mounted),
           onSaveElement: (xml) => onSave(xml),

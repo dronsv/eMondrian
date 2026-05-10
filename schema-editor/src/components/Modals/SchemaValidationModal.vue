@@ -34,38 +34,36 @@
         </v-row>
         <v-row>
           <v-col cols=12>
-            <v-simple-table>
-              <template v-slot:default>
-                <thead>
-                  <tr>
-                    <th class="text-left">
-                      Element
-                    </th>
-                    <th class="text-left">
-                      Problem
-                    </th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="(error, i) in errorList"
-                    :key="i"
-                  >
-                    <td>{{ getElementName(error.element, error.attribute) }}</td>
-                    <td>{{ error.error }}</td>
-                    <td>
-                      <v-btn
-                        text
-                        @click="closeValidation(error)"
-                      >
-                        Open element
-                      </v-btn>
-                    </td>
-                  </tr>
-                </tbody>
-              </template>
-            </v-simple-table>
+            <v-table>
+              <thead>
+                <tr>
+                  <th class="text-left">
+                    Element
+                  </th>
+                  <th class="text-left">
+                    Problem
+                  </th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(error, i) in errorList"
+                  :key="i"
+                >
+                  <td>{{ getElementName(error.element, error.attribute) }}</td>
+                  <td>{{ error.error }}</td>
+                  <td>
+                    <v-btn
+                      variant="text"
+                      @click="closeValidation(error)"
+                    >
+                      Open element
+                    </v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
           </v-col>
         </v-row>
       </v-container>
@@ -129,6 +127,10 @@ export default {
       }
     },
     closeValidation(error) {
+      if (!error) {
+        this.$emit('close', { errorList: this.errorList, element: null, attribute: null })
+        return
+      }
       const { element, attribute } = error
       this.$emit('close', { errorList: this.errorList, element, attribute})
     },
