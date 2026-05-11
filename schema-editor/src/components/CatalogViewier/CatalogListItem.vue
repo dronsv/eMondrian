@@ -3,12 +3,11 @@
     <v-list-item
       @click.stop.prevent="openItem"
     >
-      <v-list-item-icon>
+      <template #prepend>
         <v-icon v-text="'mdi-folder'"></v-icon>
-      </v-list-item-icon>
-      <v-list-item-content>
-        <v-list-item-title v-text="name"></v-list-item-title>
-      </v-list-item-content>
+      </template>
+      <v-list-item-title v-text="name"></v-list-item-title>
+      <template #append>
         <v-tooltip bottom>
           <template v-slot:activator="{ props }">
             <v-btn
@@ -54,6 +53,7 @@
           </template>
           <span>Delete</span>
         </v-tooltip>
+      </template>
     </v-list-item>
   </div>
 </template>

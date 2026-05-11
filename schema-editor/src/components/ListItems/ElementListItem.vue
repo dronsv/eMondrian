@@ -4,103 +4,103 @@
       @click.stop.prevent="openItem"
       :class="hasErrors"
     >
-      <v-list-item-icon>
+      <template #prepend>
         <v-icon v-text="iconName"></v-icon>
-      </v-list-item-icon>
-      <v-list-item-content>
-        <v-list-item-title v-text="name"></v-list-item-title>
-      </v-list-item-content>
-      <v-tooltip bottom v-if="movable">
-        <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            v-bind="props"
-            :disabled="isFirst"
-            @click.stop.prevent="$emit('moveUp')"
-          >
-            <v-icon
-              v-text="'mdi-arrow-up'"
-            ></v-icon>
-          </v-btn>
-        </template>
-        <span>Move up</span>
-      </v-tooltip>
-      <v-tooltip bottom v-if="movable">
-        <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            v-bind="props"
-            :disabled="isLast"
-            @click.stop.prevent="$emit('moveDown')"
-          >
-            <v-icon
-              v-text="'mdi-arrow-down'"
-            ></v-icon>
-          </v-btn>
-        </template>
-        <span>Move down</span>
-      </v-tooltip>
-      <v-tooltip bottom>
-        <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            v-bind="props"
-            @click.stop.prevent="copyItem"
-          >
-            <v-icon
-              v-text="'mdi-content-copy'"
-            ></v-icon>
-          </v-btn>
-        </template>
-        <span>Copy</span>
-      </v-tooltip>
-      <v-tooltip bottom>
-        <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            v-bind="props"
-            @click.stop.prevent="duplicateItem"
-          >
-            <v-icon
-              v-text="'mdi-content-duplicate'"
-            ></v-icon>
-          </v-btn>
-        </template>
-        <span>Duplicate</span>
-      </v-tooltip>
-      <v-tooltip bottom>
-        <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            v-bind="props"
-            @click.stop.prevent="deleteItem"
-          >
-            <v-icon
-              class="text-red-lighten-2"
-              v-text="'mdi-delete'"
-            ></v-icon>
-          </v-btn>
-        </template>
-        <span>Delete</span>
-      </v-tooltip>
-      <v-tooltip bottom>
-        <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            v-bind="props"
-            @click.stop.prevent="opened=!opened"
-          >
-            <v-icon
-              v-text="'mdi-chevron-down'"
-              :class="{
-                'openIcon': true,
-                'openIcon__opened': opened
-              }"
-            ></v-icon>
-          </v-btn>
-        </template>
-        <span>{{ opened ? 'Collapse' : 'Expand' }}</span>
-      </v-tooltip>
+      </template>
+      <v-list-item-title v-text="name"></v-list-item-title>
+      <template #append>
+        <v-tooltip bottom v-if="movable">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
+              :disabled="isFirst"
+              @click.stop.prevent="$emit('moveUp')"
+            >
+              <v-icon
+                v-text="'mdi-arrow-up'"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span>Move up</span>
+        </v-tooltip>
+        <v-tooltip bottom v-if="movable">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
+              :disabled="isLast"
+              @click.stop.prevent="$emit('moveDown')"
+            >
+              <v-icon
+                v-text="'mdi-arrow-down'"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span>Move down</span>
+        </v-tooltip>
+        <v-tooltip bottom>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
+              @click.stop.prevent="copyItem"
+            >
+              <v-icon
+                v-text="'mdi-content-copy'"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span>Copy</span>
+        </v-tooltip>
+        <v-tooltip bottom>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
+              @click.stop.prevent="duplicateItem"
+            >
+              <v-icon
+                v-text="'mdi-content-duplicate'"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span>Duplicate</span>
+        </v-tooltip>
+        <v-tooltip bottom>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
+              @click.stop.prevent="deleteItem"
+            >
+              <v-icon
+                class="text-red-lighten-2"
+                v-text="'mdi-delete'"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span>Delete</span>
+        </v-tooltip>
+        <v-tooltip bottom>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
+              @click.stop.prevent="opened=!opened"
+            >
+              <v-icon
+                v-text="'mdi-chevron-down'"
+                :class="{
+                  'openIcon': true,
+                  'openIcon__opened': opened
+                }"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span>{{ opened ? 'Collapse' : 'Expand' }}</span>
+        </v-tooltip>
+      </template>
     </v-list-item>
     <div v-if="opened" class="element_tree_item">
       <element-child-object

@@ -1,19 +1,17 @@
 <template>
   <div>
     <v-list-item @click.stop.prevent="openObject(obj)">
-      <v-list-item-icon>
+      <template #prepend>
         <v-icon v-text="'mdi-code-braces'"></v-icon>
-      </v-list-item-icon>
-      <v-list-item-content>
-        <v-list-item-title
-          :class="{
-            'empty-object': !obj.element
-          }"
-          class="capitalize"
-          v-text="obj.name">
-        </v-list-item-title>
-      </v-list-item-content>
-      <v-list-item-icon>
+      </template>
+      <v-list-item-title
+        :class="{
+          'empty-object': !obj.element
+        }"
+        class="capitalize"
+        v-text="obj.name">
+      </v-list-item-title>
+      <template #append>
         <div class="flex">
           <v-tooltip
             v-if="!obj.element"
@@ -52,9 +50,9 @@
               <span>Delete</span>
             </v-tooltip>
             <v-tooltip
-                v-if="hasArrays || hasChildObjects"
-                bottom
-              >
+              v-if="hasArrays || hasChildObjects"
+              bottom
+            >
               <template v-slot:activator="{ props }">
                 <v-btn
                   icon
@@ -75,7 +73,7 @@
             </v-tooltip>
           </template>
         </div>
-      </v-list-item-icon>
+      </template>
     </v-list-item>
     <div v-if="opened" class="element_tree_item">
       <element-child-object

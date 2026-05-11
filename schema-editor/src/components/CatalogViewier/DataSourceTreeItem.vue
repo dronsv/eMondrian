@@ -3,12 +3,11 @@
     <v-list-item
       @click.stop.prevent="openItem"
     >
-      <v-list-item-icon>
+      <template #prepend>
         <v-icon v-text="'mdi-database'"></v-icon>
-      </v-list-item-icon>
-      <v-list-item-content>
-        <v-list-item-title v-text="name"></v-list-item-title>
-      </v-list-item-content>
+      </template>
+      <v-list-item-title v-text="name"></v-list-item-title>
+      <template #append>
         <!-- <v-tooltip bottom>
           <template v-slot:activator="{ props }">
             <v-btn
@@ -54,24 +53,25 @@
           </template>
           <span>Delete</span>
         </v-tooltip>
-      <v-tooltip bottom>
-        <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            v-bind="props"
-            @click.stop.prevent="opened=!opened"
-          >
-            <v-icon
-              v-text="'mdi-chevron-down'"
-              :class="{
-                'openIcon': true,
-                'openIcon__opened': opened
-              }"
-            ></v-icon>
-          </v-btn>
-        </template>
-        <span>{{ opened ? 'Collapse' : 'Expand' }}</span>
-      </v-tooltip>
+        <v-tooltip bottom>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              icon
+              v-bind="props"
+              @click.stop.prevent="opened=!opened"
+            >
+              <v-icon
+                v-text="'mdi-chevron-down'"
+                :class="{
+                  'openIcon': true,
+                  'openIcon__opened': opened
+                }"
+              ></v-icon>
+            </v-btn>
+          </template>
+          <span>{{ opened ? 'Collapse' : 'Expand' }}</span>
+        </v-tooltip>
+      </template>
     </v-list-item>
     <div v-if="opened" class="element_tree_item">
       <div style="margin-bottom: 2rem;">
